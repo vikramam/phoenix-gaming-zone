@@ -5,27 +5,42 @@ import { Button } from '@/components/ui/button'
 import { FieldLabel, Input } from '@/components/ui/input'
 import { SHOP_ACCOUNTS } from '@/lib/access'
 import { signIn } from '@/lib/store'
-import { useAuthUser } from '@/lib/use-store'
+import { supabaseConfigured } from '@/lib/supabase'
+import { useAuthReady, useAuthUser } from '@/lib/use-store'
 import { cn } from '@/lib/utils'
 
 const demos = SHOP_ACCOUNTS.filter((account) => account.email !== 'operator@phoenix.local')
 
 export function LoginPage() {
+  const ready = useAuthReady()
   const user = useAuthUser()
   const navigate = useNavigate()
-  const [email, setEmail] = useState(demos[0].email)
-  const [password, setPassword] = useState(demos[0].password)
+  const [email, setEmail] = useState(supabaseConfigured ? '' : demos[0].email)
+  const [password, setPassword] = useState(supabaseConfigured ? '' : demos[0].password)
   const [error, setError] = useState('')
+  const [busy, setBusy] = useState(false)
+
+  if (!ready) {
+    return (
+      <div className="flex min-h-svh items-center justify-center bg-[#050910] text-sm text-muted">
+        Checking operator session…
+      </div>
+    )
+  }
 
   if (user) return <Navigate to="/" replace />
 
-  function onSubmit(event: FormEvent) {
+  async function onSubmit(event: FormEvent) {
     event.preventDefault()
+    setError('')
+    setBusy(true)
     try {
-      signIn(email, password)
+      await signIn(email, password)
       navigate('/')
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not sign in.')
+    } finally {
+      setBusy(false)
     }
   }
 
@@ -53,31 +68,33 @@ export function LoginPage() {
           </p>
           <h1 className="mt-2 text-3xl font-extrabold tracking-[-0.035em] uppercase">Operator sign in</h1>
         </div>
-        <div className="mb-4 grid grid-cols-2 gap-2">
-          {demos.map((account) => {
-            const active = email === account.email
-            return (
-              <button
-                key={account.email}
-                type="button"
-                onClick={() => {
-                  setEmail(account.email)
-                  setPassword(account.password)
-                  setError('')
-                }}
-                className={cn(
-                  'rounded-xl border px-3 py-2 text-left transition',
-                  active ? 'border-electric bg-electric/15' : 'border-white/12 bg-white/5 hover:border-white/25',
-                )}
-              >
-                <div className="text-xs font-extrabold uppercase">
-                  {account.role === 'admin' ? 'Owner' : 'Employee'}
-                </div>
-                <div className="truncate text-[10px] text-muted">{account.email}</div>
-              </button>
-            )
-          })}
-        </div>
+        {!supabaseConfigured ? (
+          <div className="mb-4 grid grid-cols-2 gap-2">
+            {demos.map((account) => {
+              const active = email === account.email
+              return (
+                <button
+                  key={account.email}
+                  type="button"
+                  onClick={() => {
+                    setEmail(account.email)
+                    setPassword(account.password)
+                    setError('')
+                  }}
+                  className={cn(
+                    'rounded-xl border px-3 py-2 text-left transition',
+                    active ? 'border-electric bg-electric/15' : 'border-white/12 bg-white/5 hover:border-white/25',
+                  )}
+                >
+                  <div className="text-xs font-extrabold uppercase">
+                    {account.role === 'admin' ? 'Owner' : 'Employee'}
+                  </div>
+                  <div className="truncate text-[10px] text-muted">{account.email}</div>
+                </button>
+              )
+            })}
+          </div>
+        ) : null}
         <form onSubmit={onSubmit} className="space-y-4">
           <div>
             <FieldLabel>Email</FieldLabel>
@@ -93,12 +110,14 @@ export function LoginPage() {
             />
           </div>
           {error ? <p className="text-sm text-crimson">{error}</p> : null}
-          <Button type="submit" className="w-full" size="lg" variant="electric">
-            Sign in
+          <Button type="submit" className="w-full" size="lg" variant="electric" disabled={busy}>
+            {busy ? 'Signing in…' : 'Sign in'}
           </Button>
         </form>
         <p className="mt-4 text-center text-xs text-muted">
-          Owner sees everything. Staff can run the floor, but cannot open reports or setup.
+          {supabaseConfigured
+            ? 'Use the operator email you created in Supabase. Role comes from operator_profiles (admin or employee).'
+            : 'Owner sees everything. Staff can run the floor, but cannot open reports or setup.'}
         </p>
         <p className="mt-6 text-center text-sm font-semibold text-gold">See you at the zone</p>
       </div>

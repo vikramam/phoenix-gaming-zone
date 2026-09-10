@@ -145,8 +145,7 @@ export function AppLayout() {
           <button
             type="button"
             onClick={() => {
-              signOut()
-              navigate('/login')
+              void signOut().then(() => navigate('/login'))
             }}
             className="flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-xs text-muted hover:bg-white/5 hover:text-white"
           >
@@ -199,11 +198,11 @@ export function AppLayout() {
           </div>
         ) : null}
 
-        {!supabaseConfigured ? (
-          <div className="border-b border-electric/20 bg-electric/8 px-3 py-2 text-center text-[11px] text-electric-soft print:hidden md:px-6 md:text-xs">
-            Local mode — sessions persist in this browser. Add Supabase keys later to sync across devices.
-          </div>
-        ) : null}
+        <div className="border-b border-electric/20 bg-electric/8 px-3 py-2 text-center text-[11px] text-electric-soft print:hidden md:px-6 md:text-xs">
+          {supabaseConfigured
+            ? 'Operator login uses Supabase. Shop sessions still stay in this browser.'
+            : 'Local mode — sessions persist in this browser. Add Supabase keys later to sync across devices.'}
+        </div>
 
         <main className="mx-auto max-w-[1500px] px-3 py-4 pb-[calc(5.5rem+env(safe-area-inset-bottom))] md:px-6 md:py-7 md:pb-8">
           <Outlet />

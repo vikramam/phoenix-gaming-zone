@@ -1,7 +1,9 @@
+import type { User } from '@supabase/supabase-js'
 import { accountForEmail, hydrateAuthUser } from './access'
 import { computeCharge } from './billing'
 import { rupeesToPaise } from './money'
 import { AUTH_KEY, STORAGE_KEY, createSeedData } from './seed'
+import { supabase, supabaseConfigured } from './supabase'
 import { nowIso } from './time'
 import type {
   AppData,
@@ -154,6 +156,12 @@ function saveData(data: AppData) {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(data))
 }
 
+type OperatorProfileRow = {
+  email: string
+  name: string
+  role: string
+}
+
 function loadAuth(): AuthUser | null {
   try {
     const raw = localStorage.getItem(AUTH_KEY)
@@ -166,6 +174,44 @@ function loadAuth(): AuthUser | null {
   }
 }
 
+function fallbackUserFromAuth(user: User): AuthUser {
+  const metadataName = user.user_metadata?.name
+  return {
+    email: user.email ?? '',
+    name: typeof metadataName === 'string' && metadataName ? metadataName : user.email?.split('@')[0] || 'Operator',
+    role: 'employee',
+  }
+}
+
+async function profileForUser(user: User): Promise<AuthUser> {
+  if (!supabase) return fallbackUserFromAuth(user)
+  const { data, error } = await supabase
+    .from('operator_profiles')
+    .select('email,name,role')
+    .eq('id', user.id)
+    .maybeSingle()
+  if (error) {
+    if (error.code === '42P01' || error.message.toLowerCase().includes('operator_profiles')) {
+      throw new Error('Operator profiles table is missing. Run supabase/migrations/0002_operator_profiles.sql in the SQL editor.')
+    }
+    throw new Error(error.message)
+  }
+  const row = data as OperatorProfileRow | null
+  if (!row) return fallbackUserFromAuth(user)
+  return {
+    email: row.email || fallbackUserFromAuth(user).email,
+    name: row.name || fallbackUserFromAuth(user).name,
+    role: row.role === 'admin' ? 'admin' : 'employee',
+  }
+}
+
+function signInErrorMessage(message: string) {
+  const lower = message.toLowerCase()
+  if (lower.includes('invalid login')) return 'Wrong email or password.'
+  if (lower.includes('email not confirmed')) return 'Confirm this email in Supabase Authentication → Users first.'
+  return message
+}
+
 function requireAdmin(action: string) {
   if (auth?.role !== 'admin') {
     throw { code: 'forbidden', message: `Only the owner can ${action}.` } satisfies StoreError
@@ -173,8 +219,13 @@ function requireAdmin(action: string) {
 }
 
 let data = loadData()
-let auth = loadAuth()
+let auth = supabaseConfigured ? null : loadAuth()
+let authReady = !supabaseConfigured
 const listeners = new Set<Listener>()
+
+function emitAuth() {
+  for (const listener of listeners) listener()
+}
 
 if (typeof window !== 'undefined') {
   window.addEventListener('storage', (event) => {
@@ -186,12 +237,46 @@ if (typeof window !== 'undefined') {
         /* ignore bad payloads */
       }
     }
-    if (event.key === AUTH_KEY) {
+    if (!supabaseConfigured && event.key === AUTH_KEY) {
       auth = loadAuth()
       for (const listener of listeners) listener()
     }
   })
 }
+
+async function hydrateSupabaseAuth() {
+  if (!supabase) {
+    authReady = true
+    emitAuth()
+    return
+  }
+  const { data: sessionData } = await supabase.auth.getSession()
+  if (sessionData.session?.user) {
+    try {
+      auth = await profileForUser(sessionData.session.user)
+    } catch {
+      auth = fallbackUserFromAuth(sessionData.session.user)
+    }
+  }
+  authReady = true
+  emitAuth()
+  supabase.auth.onAuthStateChange(async (event, session) => {
+    if (event === 'INITIAL_SESSION' || event === 'TOKEN_REFRESHED') return
+    if (!session?.user) {
+      auth = null
+      emitAuth()
+      return
+    }
+    try {
+      auth = await profileForUser(session.user)
+    } catch {
+      auth = fallbackUserFromAuth(session.user)
+    }
+    emitAuth()
+  })
+}
+
+void hydrateSupabaseAuth()
 
 function emit() {
   // Consumers read this snapshot through useSyncExternalStore, which bails out
@@ -214,20 +299,39 @@ export function getAuth() {
   return auth
 }
 
-export function signIn(email: string, password: string) {
+export function getAuthReady() {
+  return authReady
+}
+
+export async function signIn(email: string, password: string) {
+  if (supabase) {
+    const { data: sessionData, error } = await supabase.auth.signInWithPassword({
+      email: email.trim(),
+      password,
+    })
+    if (error || !sessionData.user) {
+      throw new Error(signInErrorMessage(error?.message ?? 'Could not sign in.'))
+    }
+    auth = await profileForUser(sessionData.user)
+    emitAuth()
+    return
+  }
   const account = accountForEmail(email)
   if (!account || account.password !== password) {
     throw new Error('Unknown account. Use the owner or staff login.')
   }
   auth = { email: account.email, name: account.name, role: account.role }
   localStorage.setItem(AUTH_KEY, JSON.stringify(auth))
-  emit()
+  emitAuth()
 }
 
-export function signOut() {
+export async function signOut() {
+  if (supabase) {
+    await supabase.auth.signOut()
+  }
   auth = null
   localStorage.removeItem(AUTH_KEY)
-  emit()
+  emitAuth()
 }
 
 export function occupiedAssetIds(snapshot: AppData = data) {

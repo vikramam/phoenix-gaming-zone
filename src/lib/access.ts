@@ -7,6 +7,7 @@ export type ShopAccount = {
   role: Role
 }
 
+/** Local-demo accounts only. Cloud login reads role from operator_profiles. */
 export const SHOP_ACCOUNTS: ShopAccount[] = [
   {
     email: 'owner@phoenix.local',
