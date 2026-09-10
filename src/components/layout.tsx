@@ -45,8 +45,14 @@ export function AppLayout() {
   const activeCount = data.sessions.filter((session) => session.status === 'active').length
   const onSetup = location.pathname.startsWith('/setup')
   const [setupOpen, setSetupOpen] = useState(onSetup)
+  const [accountOpen, setAccountOpen] = useState(false)
   const showReports = canAccessReports(user)
   const showSetup = canAccessSetup(user)
+
+  function handleSignOut() {
+    setAccountOpen(false)
+    void signOut().then(() => navigate('/login'))
+  }
   const visibleNav = nav.filter((item) => item.to !== '/reports' || showReports)
   const mobileNav = showSetup
     ? [
@@ -144,9 +150,7 @@ export function AppLayout() {
           </div>
           <button
             type="button"
-            onClick={() => {
-              void signOut().then(() => navigate('/login'))
-            }}
+            onClick={handleSignOut}
             className="flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-xs text-muted hover:bg-white/5 hover:text-white"
           >
             <LogOut className="size-3.5" /> Sign out
@@ -158,13 +162,18 @@ export function AppLayout() {
         <header className="sticky top-0 z-40 border-b border-line/60 bg-bg/80 backdrop-blur-xl print:hidden">
           <div className="flex h-[60px] items-center gap-3 px-3 md:h-[72px] md:px-6">
             <BrandMark compact className="lg:hidden" />
-            <div className="ml-auto flex items-center gap-2">
+            <div className="relative ml-auto flex items-center gap-2">
               <StatusPill status="live">Live</StatusPill>
-              <button type="button" className="relative rounded-xl border border-line/60 bg-[#0b1b2d] p-2 text-muted hover:text-white md:p-2.5">
+              <button
+                type="button"
+                onClick={() => navigate('/active')}
+                className="relative rounded-xl border border-line/60 bg-[#0b1b2d] p-2 text-muted hover:text-white md:p-2.5"
+                aria-label="Active sessions"
+              >
                 <Bell className="size-4" />
                 {activeCount ? <span className="absolute top-1.5 right-1.5 size-1.5 rounded-full bg-gold" /> : null}
               </button>
-              <div className="hidden items-center gap-2 rounded-xl border border-line/60 bg-[#0b1b2d] px-2.5 py-1.5 sm:flex">
+              <div className="hidden items-center gap-2 rounded-xl border border-line/60 bg-[#0b1b2d] px-2.5 py-1.5 lg:flex">
                 <span className="flex size-7 items-center justify-center rounded-lg bg-electric text-xs font-bold">
                   {(user?.name || 'O').slice(0, 1).toUpperCase()}
                 </span>
@@ -173,6 +182,45 @@ export function AppLayout() {
                   <div className="text-[9px] text-muted">{roleLabel(user)}</div>
                 </div>
               </div>
+              <button
+                type="button"
+                onClick={() => setAccountOpen((open) => !open)}
+                className="flex items-center gap-2 rounded-xl border border-line/60 bg-[#0b1b2d] px-2 py-1.5 lg:hidden"
+                aria-expanded={accountOpen}
+                aria-label="Account menu"
+              >
+                <span className="flex size-7 items-center justify-center rounded-lg bg-electric text-xs font-bold">
+                  {(user?.name || 'O').slice(0, 1).toUpperCase()}
+                </span>
+                <div className="hidden min-w-0 text-left sm:block">
+                  <div className="truncate text-xs font-bold capitalize">{user?.name}</div>
+                  <div className="text-[9px] text-muted">{roleLabel(user)}</div>
+                </div>
+                <ChevronDown className={cn('size-3.5 text-muted transition', accountOpen && 'rotate-180')} />
+              </button>
+              {accountOpen ? (
+                <>
+                  <button
+                    type="button"
+                    className="fixed inset-0 z-40 lg:hidden"
+                    aria-label="Close account menu"
+                    onClick={() => setAccountOpen(false)}
+                  />
+                  <div className="absolute top-[calc(100%+0.5rem)] right-0 z-50 w-52 rounded-2xl border border-line/70 bg-[#0b1b2d] p-3 shadow-[0_16px_40px_rgba(0,0,0,0.35)] lg:hidden">
+                    <div className="mb-2">
+                      <div className="truncate text-sm font-bold capitalize">{user?.name}</div>
+                      <div className="text-[11px] text-muted">{roleLabel(user)}</div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={handleSignOut}
+                      className="flex w-full items-center gap-2 rounded-lg px-2 py-2 text-sm text-muted hover:bg-white/5 hover:text-white"
+                    >
+                      <LogOut className="size-4" /> Sign out
+                    </button>
+                  </div>
+                </>
+              ) : null}
             </div>
           </div>
         </header>
@@ -198,9 +246,9 @@ export function AppLayout() {
           </div>
         ) : null}
 
-        <div className="border-b border-electric/20 bg-electric/8 px-3 py-2 text-center text-[11px] text-electric-soft print:hidden md:px-6 md:text-xs">
+        <div className="hidden border-b border-electric/20 bg-electric/8 px-3 py-2 text-center text-[11px] text-electric-soft print:hidden md:block md:px-6 md:text-xs">
           {supabaseConfigured
-            ? 'Operator login uses Supabase. Shop sessions still stay in this browser.'
+            ? 'Operator login and the shop floor sync through Supabase.'
             : 'Local mode — sessions persist in this browser. Add Supabase keys later to sync across devices.'}
         </div>
 
@@ -226,7 +274,14 @@ export function AppLayout() {
                 )
               }
             >
-              <item.icon className="size-5" />
+              <span className="relative">
+                <item.icon className="size-5" />
+                {item.to === '/active' && activeCount > 0 ? (
+                  <span className="absolute -top-1.5 -right-2 min-w-4 rounded-full bg-crimson px-1 text-[9px] leading-4 font-bold text-white">
+                    {activeCount}
+                  </span>
+                ) : null}
+              </span>
               {item.label}
             </NavLink>
           ))}

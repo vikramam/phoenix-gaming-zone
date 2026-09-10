@@ -222,9 +222,105 @@ let data = loadData()
 let auth = supabaseConfigured ? null : loadAuth()
 let authReady = !supabaseConfigured
 const listeners = new Set<Listener>()
+let applyingRemote = false
+let lastRemoteUpdatedAt = ''
+let remoteWriteTimer: ReturnType<typeof setTimeout> | undefined
+let shopChannel: ReturnType<NonNullable<typeof supabase>['channel']> | null = null
 
 function emitAuth() {
   for (const listener of listeners) listener()
+}
+
+function isAppData(value: unknown): value is AppData {
+  if (!value || typeof value !== 'object') return false
+  const row = value as Partial<AppData>
+  return Boolean(row.settings && Array.isArray(row.assets) && Array.isArray(row.sessions))
+}
+
+function notify() {
+  data = { ...data }
+  saveData(data)
+  for (const listener of listeners) listener()
+}
+
+function applyRemoteShop(snapshot: AppData, updatedAt: string) {
+  applyingRemote = true
+  lastRemoteUpdatedAt = updatedAt
+  data = hydrateCatalog(snapshot)
+  notify()
+  applyingRemote = false
+}
+
+async function pushShopState() {
+  if (!supabase || !auth || applyingRemote) return
+  const { data: sessionData } = await supabase.auth.getSession()
+  const { data: row, error } = await supabase
+    .from('shop_state')
+    .upsert({
+      id: 'default',
+      data,
+      updated_at: new Date().toISOString(),
+      updated_by: sessionData.session?.user.id ?? null,
+    })
+    .select('updated_at')
+    .single()
+  if (!error && row?.updated_at) lastRemoteUpdatedAt = row.updated_at as string
+}
+
+function scheduleShopPush() {
+  if (applyingRemote || !supabase || !auth || typeof window === 'undefined') return
+  window.clearTimeout(remoteWriteTimer)
+  remoteWriteTimer = window.setTimeout(() => {
+    void pushShopState()
+  }, 250)
+}
+
+async function pullShopState() {
+  if (!supabase || !auth) return
+  const { data: row, error } = await supabase
+    .from('shop_state')
+    .select('data, updated_at')
+    .eq('id', 'default')
+    .maybeSingle()
+  if (error || !row || !isAppData(row.data)) {
+    await pushShopState()
+    return
+  }
+  const remote = hydrateCatalog(row.data)
+  const remoteActive = remote.sessions.filter((session) => session.status === 'active').length
+  const localActive = data.sessions.filter((session) => session.status === 'active').length
+  if (remoteActive === 0 && localActive > 0) {
+    await pushShopState()
+    return
+  }
+  applyRemoteShop(remote, row.updated_at as string)
+}
+
+function subscribeShopState() {
+  if (!supabase || shopChannel) return
+  shopChannel = supabase
+    .channel('shop-state')
+    .on(
+      'postgres_changes',
+      { event: '*', schema: 'public', table: 'shop_state', filter: 'id=eq.default' },
+      (payload) => {
+        const next = payload.new as { data?: unknown; updated_at?: string } | null
+        if (!next?.updated_at || next.updated_at === lastRemoteUpdatedAt || !isAppData(next.data)) return
+        applyRemoteShop(hydrateCatalog(next.data), next.updated_at)
+      },
+    )
+    .subscribe()
+}
+
+function unsubscribeShopState() {
+  if (!supabase || !shopChannel) return
+  void supabase.removeChannel(shopChannel)
+  shopChannel = null
+}
+
+async function syncShopAfterAuth() {
+  await pullShopState()
+  subscribeShopState()
 }
 
 if (typeof window !== 'undefined') {
@@ -260,10 +356,12 @@ async function hydrateSupabaseAuth() {
   }
   authReady = true
   emitAuth()
+  if (auth) void syncShopAfterAuth()
   supabase.auth.onAuthStateChange(async (event, session) => {
     if (event === 'INITIAL_SESSION' || event === 'TOKEN_REFRESHED') return
     if (!session?.user) {
       auth = null
+      unsubscribeShopState()
       emitAuth()
       return
     }
@@ -273,6 +371,7 @@ async function hydrateSupabaseAuth() {
       auth = fallbackUserFromAuth(session.user)
     }
     emitAuth()
+    void syncShopAfterAuth()
   })
 }
 
@@ -281,9 +380,8 @@ void hydrateSupabaseAuth()
 function emit() {
   // Consumers read this snapshot through useSyncExternalStore, which bails out
   // on reference equality, so every change has to produce a fresh object.
-  data = { ...data }
-  saveData(data)
-  for (const listener of listeners) listener()
+  notify()
+  scheduleShopPush()
 }
 
 export function subscribe(listener: Listener) {
@@ -314,6 +412,7 @@ export async function signIn(email: string, password: string) {
     }
     auth = await profileForUser(sessionData.user)
     emitAuth()
+    await syncShopAfterAuth()
     return
   }
   const account = accountForEmail(email)
@@ -326,6 +425,7 @@ export async function signIn(email: string, password: string) {
 }
 
 export async function signOut() {
+  unsubscribeShopState()
   if (supabase) {
     await supabase.auth.signOut()
   }
