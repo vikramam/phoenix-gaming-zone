@@ -1,0 +1,96 @@
+{
+  "brand": {
+    "name": "Phoenix Gaming Zone",
+    "tagline": "PLAY | COMPETE | WIN",
+    "slogan": "PLAY BEYOND LIMITS",
+    "logo": "brand/phoenix-gaming-zone-logo.png",
+    "vibeReference": "brand/vibe-reference-poster.png",
+    "colors": {
+      "bg": "#07080C",
+      "elevated": "#10131A",
+      "card": "#161A22",
+      "line": "#2A3140",
+      "electric": "#2F6BFF",
+      "electricSoft": "#4DA3FF",
+      "gold": "#F5C518",
+      "ember": "#FF6A00",
+      "crimson": "#E23B3B",
+      "text": "#FFFFFF",
+      "muted": "#A8B0C0"
+    }
+  },
+  "usage": {
+    "assetTypes": "Standalone photos for a physical asset type (VR, racing wheel). Used on asset cards, accessory strip, and Setup → Assets.",
+    "packages": "Combo photos for a pricing package / active session. Used on the floor card after a package is selected.",
+    "brand": "Shop logo on login, sidebar, and browser tab. Business name defaults to Phoenix Gaming Zone and stays editable in Settings.",
+    "vibe": "Match the shop poster: dark lounge, white type, gold prices, electric blue energy, product photos on cards. Brush lettering only for marketing moments (login), never on timers or forms."
+  },
+  "assetTypes": [
+    {
+      "key": "controller",
+      "label": "Controller",
+      "file": "asset-types/controller.jpg"
+    },
+    {
+      "key": "vr2",
+      "label": "VR Headset",
+      "file": "asset-types/vr2.jpg"
+    },
+    {
+      "key": "racing-wheel",
+      "label": "Racing Wheel",
+      "file": "asset-types/racing-wheel.jpg"
+    }
+  ],
+  "packages": [
+    {
+      "key": "ps5",
+      "label": "1 Player",
+      "hourlyRateInr": 100,
+      "requires": { "ps5": 1 },
+      "file": "packages/ps5.jpg"
+    },
+    {
+      "key": "ps5-extra-controller",
+      "label": "2 Players",
+      "hourlyRateInr": 150,
+      "requires": { "ps5": 1, "controller": 1 },
+      "file": "packages/ps5-extra-controller.jpg"
+    },
+    {
+      "key": "ps5-2-extra-controllers",
+      "label": "3 Players",
+      "hourlyRateInr": 200,
+      "requires": { "ps5": 1, "controller": 2 },
+      "file": "packages/ps5-2-extra-controllers.jpg"
+    },
+    {
+      "key": "ps5-3-extra-controllers",
+      "label": "4 Players",
+      "hourlyRateInr": 250,
+      "requires": { "ps5": 1, "controller": 3 },
+      "file": "packages/ps5-3-extra-controllers.jpg"
+    },
+    {
+      "key": "ps5-racing-wheel",
+      "label": "Racing Wheel",
+      "hourlyRateInr": 150,
+      "requires": { "ps5": 1, "racing-wheel": 1 },
+      "file": "packages/ps5-racing-wheel.jpg"
+    },
+    {
+      "key": "ps5-racing-wheel-vr2",
+      "label": "Racing Wheel with VR",
+      "hourlyRateInr": 200,
+      "requires": { "ps5": 1, "racing-wheel": 1, "vr2": 1 },
+      "file": "packages/ps5-racing-wheel-vr2.jpg"
+    },
+    {
+      "key": "ps5-vr2",
+      "label": "1 PS5 + VR2",
+      "hourlyRateInr": 150,
+      "requires": { "ps5": 1, "vr2": 1 },
+      "file": "packages/ps5-vr2.jpg"
+    }
+  ]
+}
