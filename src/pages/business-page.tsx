@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { FieldLabel, Input } from '@/components/ui/input'
+import { paiseToRupees, rupeesToPaise } from '@/lib/money'
+import { DEFAULT_SNACK_CHIPS_PAISE, DEFAULT_SNACK_COKE_PAISE } from '@/lib/snacks'
 import { resetDemoData, updateSettings } from '@/lib/store'
 import type { RoundingMode } from '@/lib/types'
 import { useAppData } from '@/lib/use-store'
@@ -110,6 +112,37 @@ export function BusinessPage() {
         />
         Closes after midnight
       </label>
+      </section>
+
+      <section className="esports-card mt-5 rounded-2xl p-5">
+        <h2 className="mb-2 text-xl font-extrabold">Snack quick-add prices</h2>
+        <p className="mb-4 text-sm text-muted">
+          These are only shortcuts on the Add Snacks popup. Changing a price does not change snacks already added to a session. Use Save settings at the bottom.
+        </p>
+        <div className="grid gap-4 md:grid-cols-2">
+          <div>
+            <FieldLabel>Coke (₹)</FieldLabel>
+            <Input
+              type="number"
+              min={1}
+              value={paiseToRupees(settings.snackCokePaise ?? DEFAULT_SNACK_COKE_PAISE)}
+              onChange={(event) =>
+                setSettings({ ...settings, snackCokePaise: rupeesToPaise(Number(event.target.value)) })
+              }
+            />
+          </div>
+          <div>
+            <FieldLabel>Chips (₹)</FieldLabel>
+            <Input
+              type="number"
+              min={1}
+              value={paiseToRupees(settings.snackChipsPaise ?? DEFAULT_SNACK_CHIPS_PAISE)}
+              onChange={(event) =>
+                setSettings({ ...settings, snackChipsPaise: rupeesToPaise(Number(event.target.value)) })
+              }
+            />
+          </div>
+        </div>
       </section>
 
       <section className="esports-card mt-5 rounded-2xl p-5">

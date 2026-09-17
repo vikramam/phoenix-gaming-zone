@@ -124,10 +124,17 @@ function hydrateCatalog(snapshot: AppData) {
       snapshot.settings.warningFirstPeriodMinutes ?? snapshot.settings.minimumDurationMinutes ?? 60,
     warningExtendMinutes:
       snapshot.settings.warningExtendMinutes ?? snapshot.settings.billingIncrementMinutes ?? 30,
+    snackCokePaise: snapshot.settings.snackCokePaise ?? 4000,
+    snackChipsPaise: snapshot.settings.snackChipsPaise ?? 2000,
   }
   snapshot.sessions = snapshot.sessions.map((session) => ({
     ...session,
     extensionCount: session.extensionCount ?? 0,
+    snacksAmountPaise: session.snacksAmountPaise ?? 0,
+  }))
+  snapshot.charges = (snapshot.charges ?? []).map((charge) => ({
+    ...charge,
+    snacksAmountPaise: charge.snacksAmountPaise ?? 0,
   }))
   snapshot.customers = snapshot.customers.map((customer) => ({
     ...customer,
@@ -612,6 +619,7 @@ export function startSession(input: StartSessionInput): GamingSession {
     startedAt,
     endedAt: null,
     extensionCount: 0,
+    snacksAmountPaise: 0,
     clientRequestId: input.clientRequestId,
     notes: input.notes ?? '',
   }
@@ -649,6 +657,7 @@ export function previewComplete(sessionId: string, at = nowIso()): SessionCharge
     roundingMode: session.roundingMode,
     startedAt: session.startedAt,
     endedAt: session.endedAt ?? at,
+    snacksAmountPaise: session.snacksAmountPaise ?? 0,
   })
 }
 
@@ -673,6 +682,7 @@ export function completeSession(input: CompleteSessionInput): SessionCharge {
     endedAt,
     overrideAmountPaise: input.overrideAmountPaise,
     overrideReason: input.overrideReason,
+    snacksAmountPaise: session.snacksAmountPaise ?? 0,
     paymentStatus: input.paymentStatus,
     paymentMethod: input.paymentMethod,
   })
@@ -686,6 +696,23 @@ export function completeSession(input: CompleteSessionInput): SessionCharge {
   data.charges = [charge, ...data.charges.filter((row) => row.sessionId !== session.id)]
   emit()
   return charge
+}
+
+export function addSessionSnacks(sessionId: string, amountPaise: number) {
+  const session = data.sessions.find((row) => row.id === sessionId)
+  if (!session || session.status !== 'active') {
+    throw { code: 'session_not_found', message: 'Snacks can only be added to an active session.' } satisfies StoreError
+  }
+  const add = Math.round(amountPaise)
+  if (!Number.isFinite(add) || add <= 0) {
+    throw { code: 'invalid', message: 'Enter a snack amount greater than zero.' } satisfies StoreError
+  }
+  data.sessions = data.sessions.map((row) =>
+    row.id === session.id
+      ? { ...row, snacksAmountPaise: (row.snacksAmountPaise ?? 0) + add }
+      : row,
+  )
+  emit()
 }
 
 export function extendSession(sessionId: string) {

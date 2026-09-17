@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { ArrowUpRight, ChevronDown, Plus, Sparkles } from 'lucide-react'
+import { AddSnacksDialog } from '@/components/add-snacks-dialog'
 import { EndSessionDialog } from '@/components/end-session-dialog'
 import { StartSessionDialog } from '@/components/start-session-dialog'
 import { StationCard } from '@/components/station-card'
@@ -23,6 +24,7 @@ export function FloorPage() {
   const [startOpen, setStartOpen] = useState(false)
   const [presetAssetId, setPresetAssetId] = useState<string | null>(null)
   const [ending, setEnding] = useState<GamingSession | null>(null)
+  const [snacking, setSnacking] = useState<GamingSession | null>(null)
   const [accessoriesOpen, setAccessoriesOpen] = useState(false)
   const today = useMemo(() => reportSummary(data, 'today'), [data])
   const occupied = occupiedAssetIds(data)
@@ -159,6 +161,7 @@ export function FloorPage() {
                       setStartOpen(true)
                     }}
                     onEnd={() => session && setEnding(session)}
+                    onAddSnacks={() => session && setSnacking(session)}
                   />
                 )
               })}
@@ -211,6 +214,7 @@ export function FloorPage() {
         presetAssetId={presetAssetId}
       />
       <EndSessionDialog open={Boolean(ending)} onOpenChange={(open) => !open && setEnding(null)} data={data} session={ending} />
+      <AddSnacksDialog open={Boolean(snacking)} onOpenChange={(open) => !open && setSnacking(null)} data={data} session={snacking} />
     </div>
   )
 }

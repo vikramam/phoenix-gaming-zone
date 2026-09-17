@@ -75,6 +75,7 @@ export type SessionCharge = {
   computedAmountPaise: number
   overrideAmountPaise: number | null
   overrideReason: string
+  snacksAmountPaise: number
   finalAmountPaise: number
   paymentStatus: PaymentStatus
   paymentMethod: PaymentMethod | null
@@ -94,6 +95,7 @@ export type GamingSession = {
   startedAt: string
   endedAt: string | null
   extensionCount: number
+  snacksAmountPaise: number
   clientRequestId: string
   notes: string
 }
@@ -115,6 +117,8 @@ export type BusinessSettings = {
   warningRedPercent: number
   warningFirstPeriodMinutes: number
   warningExtendMinutes: number
+  snackCokePaise: number
+  snackChipsPaise: number
 }
 
 export type AppData = {

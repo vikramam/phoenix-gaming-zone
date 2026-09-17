@@ -1,10 +1,12 @@
 import { useState } from 'react'
+import { AddSnacksDialog } from '@/components/add-snacks-dialog'
 import { EndSessionDialog } from '@/components/end-session-dialog'
 import { StartSessionDialog } from '@/components/start-session-dialog'
 import { StatusPill } from '@/components/status-pill'
 import { LiveTimer } from '@/components/timer'
 import { Button } from '@/components/ui/button'
 import { formatMoney } from '@/lib/money'
+import { sessionSnacksPaise } from '@/lib/snacks'
 import { amountForDuration, billedSeconds } from '@/lib/billing'
 import { assetsForSession, extendSession, sessionDisplayName } from '@/lib/store'
 import { formatClock, formatDuration, secondsBetween } from '@/lib/time'
@@ -26,6 +28,7 @@ export function ActivePage() {
   const now = useNow()
   const [startOpen, setStartOpen] = useState(false)
   const [ending, setEnding] = useState<GamingSession | null>(null)
+  const [snacking, setSnacking] = useState<GamingSession | null>(null)
   const active = data.sessions.filter((session) => session.status === 'active')
 
   return (
@@ -53,6 +56,8 @@ export function ActivePage() {
               session.roundingMode,
             )
             const estimate = amountForDuration(session.hourlyRatePaise, billed)
+            const snacks = sessionSnacksPaise(session)
+            const total = estimate + snacks
             const allocations = assetsForSession(session.id, data)
             const stations = allocations.filter(
               (row) => data.assetTypes.find((type) => type.id === row.assetTypeId)?.isStation,
@@ -99,10 +104,7 @@ export function ActivePage() {
                       <span className="max-w-[72%] truncate rounded-lg bg-[#060f1c]/85 px-2 py-1 text-sm font-extrabold text-white shadow-[0_2px_10px_rgba(0,0,0,0.35)] backdrop-blur-sm">
                         {stationLabel}
                       </span>
-                      <span className="live-pip mt-1 size-2.5 shrink-0 rounded-full bg-crimson shadow-[0_0_0_3px_rgba(6,15,28,0.7)] sm:hidden" />
-                      <span className="hidden sm:inline-flex">
-                        <StatusPill status="in-use">In use</StatusPill>
-                      </span>
+                      <StatusPill status="in-use">In use</StatusPill>
                     </div>
                   </div>
                   <div className="absolute inset-x-0 bottom-0 flex items-end justify-between gap-2 px-2.5 pb-1.5">
@@ -111,7 +113,7 @@ export function ActivePage() {
                       className={cn('text-xl leading-none font-bold sm:text-2xl', warningTimerClass[warning])}
                     />
                     <span className="text-base leading-none font-extrabold text-white sm:text-lg">
-                      {formatMoney(estimate)}
+                      {formatMoney(total)}
                     </span>
                   </div>
                 </div>
@@ -142,23 +144,42 @@ export function ActivePage() {
                   <div className="truncate text-[10px] text-muted">
                     {[session.packageNameSnapshot, ...extras.map((row) => row.assetNameSnapshot)].join(' · ')}
                   </div>
-                  <div className="mt-auto flex gap-1.5">
-                    <Button
-                      size="sm"
-                      variant={warning === 'none' ? 'outline' : 'gold'}
-                      className="flex-1 px-1 text-xs"
-                      onClick={() => extendSession(session.id)}
-                    >
-                      +{data.settings.warningExtendMinutes}m
+                  <div className="space-y-0.5 text-[11px] leading-tight">
+                    <div className="flex justify-between gap-2 text-muted">
+                      <span>Gaming</span>
+                      <span className="font-semibold text-white">{formatMoney(estimate)}</span>
+                    </div>
+                    <div className="flex justify-between gap-2 text-muted">
+                      <span>Snacks</span>
+                      <span className="font-semibold text-white">{formatMoney(snacks)}</span>
+                    </div>
+                    <div className="flex justify-between gap-2 font-extrabold text-white">
+                      <span>Total</span>
+                      <span>{formatMoney(total)}</span>
+                    </div>
+                  </div>
+                  <div className="mt-auto space-y-1.5">
+                    <Button size="sm" variant="outline" className="w-full px-1 text-xs" onClick={() => setSnacking(session)}>
+                      + Add Snacks
                     </Button>
-                    <Button
-                      size="sm"
-                      variant="crimson"
-                      className="flex-1 px-1 text-xs"
-                      onClick={() => setEnding(session)}
-                    >
-                      End
-                    </Button>
+                    <div className="flex gap-1.5">
+                      <Button
+                        size="sm"
+                        variant={warning === 'none' ? 'outline' : 'gold'}
+                        className="flex-1 px-1 text-xs"
+                        onClick={() => extendSession(session.id)}
+                      >
+                        +{data.settings.warningExtendMinutes}m
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="crimson"
+                        className="flex-1 px-1 text-xs"
+                        onClick={() => setEnding(session)}
+                      >
+                        End
+                      </Button>
+                    </div>
                   </div>
                 </div>
               </article>
@@ -169,6 +190,7 @@ export function ActivePage() {
 
       <StartSessionDialog open={startOpen} onOpenChange={setStartOpen} data={data} />
       <EndSessionDialog open={Boolean(ending)} onOpenChange={(open) => !open && setEnding(null)} data={data} session={ending} />
+      <AddSnacksDialog open={Boolean(snacking)} onOpenChange={(open) => !open && setSnacking(null)} data={data} session={snacking} />
     </div>
   )
 }

@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react'
 import { FileSpreadsheet, FileText } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { formatMoney } from '@/lib/money'
+import { chargeGamingPaise, chargeSnacksPaise } from '@/lib/snacks'
 import { reportSummary } from '@/lib/reports'
 import { assetsForSession, sessionDisplayName } from '@/lib/store'
 import { formatClock, formatDate, formatDurationShort } from '@/lib/time'
@@ -25,7 +26,14 @@ export function ReportsPage() {
   const [to, setTo] = useState('')
   const [page, setPage] = useState(0)
   const report = useMemo(() => reportSummary(data, preset, from, to), [data, preset, from, to])
-  const avgTicket = report.completed > 0 ? Math.round(report.revenue / report.completed) : 0
+  const snackWindows = useMemo(
+    () => ({
+      today: reportSummary(data, 'today').snacksRevenue,
+      week: reportSummary(data, 'week').snacksRevenue,
+      month: reportSummary(data, 'month').snacksRevenue,
+    }),
+    [data],
+  )
   const usageMax = Math.max(...report.usageByType.map((row) => row.seconds), 1)
   const totalPages = Math.max(1, Math.ceil(report.sessions.length / PAGE_SIZE))
   const currentPage = Math.min(page, totalPages - 1)
@@ -76,11 +84,21 @@ export function ReportsPage() {
       ) : null}
 
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <Kpi label="Revenue" value={formatMoney(report.revenue)} />
+        <Kpi label="Gaming revenue" value={formatMoney(report.gamingRevenue)} />
+        <Kpi label="Snacks revenue" value={formatMoney(report.snacksRevenue)} />
+        <Kpi label="Total revenue" value={formatMoney(report.revenue)} />
         <Kpi label="Sessions" value={String(report.completed)} />
-        <Kpi label="Gaming time" value={formatDurationShort(report.gamingSeconds)} />
-        <Kpi label="Avg ticket" value={formatMoney(avgTicket)} />
       </div>
+
+      <section className="esports-card rounded-2xl p-5">
+        <h2 className="mb-1 text-base font-extrabold tracking-wide uppercase">Snacks revenue</h2>
+        <p className="mb-4 text-sm text-muted">One snacks total — Coke and Chips are not reported separately.</p>
+        <div className="grid grid-cols-3 gap-3">
+          <Kpi label="Today" value={formatMoney(snackWindows.today)} />
+          <Kpi label="This week" value={formatMoney(snackWindows.week)} />
+          <Kpi label="This month" value={formatMoney(snackWindows.month)} />
+        </div>
+      </section>
 
       <section className="esports-card overflow-hidden rounded-2xl">
         <div className="flex flex-wrap items-center justify-between gap-2 border-b border-line/60 px-4 py-3">
@@ -94,7 +112,7 @@ export function ReportsPage() {
             <table className="w-full min-w-[720px] text-left text-sm">
               <thead className="bg-white/5 text-xs font-bold tracking-[0.12em] text-muted uppercase">
                 <tr>
-                  {['When', 'Customer', 'Station', 'Package', 'Played', 'Paid', 'Method'].map((head) => (
+                  {['When', 'Customer', 'Station', 'Package', 'Played', 'Gaming', 'Snacks', 'Total', 'Method'].map((head) => (
                     <th key={head} className="px-4 py-3">
                       {head}
                     </th>
@@ -115,6 +133,8 @@ export function ReportsPage() {
                       <td className="px-4 py-3">
                         {charge ? formatDurationShort(charge.rawDurationSeconds) : '—'}
                       </td>
+                      <td className="px-4 py-3">{charge ? formatMoney(chargeGamingPaise(charge)) : '—'}</td>
+                      <td className="px-4 py-3">{charge ? formatMoney(chargeSnacksPaise(charge)) : '—'}</td>
                       <td className="px-4 py-3 font-extrabold text-white">
                         {charge ? formatMoney(charge.finalAmountPaise) : '—'}
                       </td>
@@ -247,7 +267,7 @@ function csvCell(value: string) {
 
 function downloadCsv(data: AppData, report: ReturnType<typeof reportSummary>) {
   const sessionLines = [
-    ['When', 'Customer', 'Station', 'Package', 'Played', 'Paid', 'Method', 'Payment'].map(csvCell).join(','),
+    ['When', 'Customer', 'Station', 'Package', 'Played', 'Gaming', 'Snacks', 'Total', 'Method', 'Payment'].map(csvCell).join(','),
     ...report.sessions.map((session) => {
       const charge = data.charges.find((row) => row.sessionId === session.id)
       const when = session.endedAt
@@ -259,6 +279,8 @@ function downloadCsv(data: AppData, report: ReturnType<typeof reportSummary>) {
         stationLabel(session, data),
         session.packageNameSnapshot,
         charge ? formatDurationShort(charge.rawDurationSeconds) : '',
+        charge ? formatMoney(chargeGamingPaise(charge)) : '',
+        charge ? formatMoney(chargeSnacksPaise(charge)) : '',
         charge ? formatMoney(charge.finalAmountPaise) : '',
         charge?.paymentMethod ?? '',
         charge?.paymentStatus ?? '',

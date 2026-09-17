@@ -39,6 +39,7 @@ export function computeCharge(input: {
   endedAt: string
   overrideAmountPaise?: number | null
   overrideReason?: string
+  snacksAmountPaise?: number
   paymentStatus?: SessionCharge['paymentStatus']
   paymentMethod?: SessionCharge['paymentMethod']
 }): SessionCharge {
@@ -51,6 +52,8 @@ export function computeCharge(input: {
   )
   const computedAmountPaise = amountForDuration(input.hourlyRatePaise, billedDurationSeconds)
   const override = input.overrideAmountPaise ?? null
+  const snacksAmountPaise = Math.max(0, Math.round(input.snacksAmountPaise ?? 0))
+  const gamingAmountPaise = override ?? computedAmountPaise
   return {
     sessionId: input.sessionId,
     packageId: input.packageId,
@@ -64,7 +67,8 @@ export function computeCharge(input: {
     computedAmountPaise,
     overrideAmountPaise: override,
     overrideReason: input.overrideReason?.trim() ?? '',
-    finalAmountPaise: override ?? computedAmountPaise,
+    snacksAmountPaise,
+    finalAmountPaise: gamingAmountPaise + snacksAmountPaise,
     paymentStatus: input.paymentStatus ?? 'collected',
     paymentMethod: input.paymentMethod ?? 'cash',
   }

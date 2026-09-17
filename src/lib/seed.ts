@@ -45,6 +45,8 @@ export function createSeedData(): AppData {
       warningRedPercent: 100,
       warningFirstPeriodMinutes: 60,
       warningExtendMinutes: 30,
+      snackCokePaise: 4000,
+      snackChipsPaise: 2000,
     },
     assetTypes: [
       {

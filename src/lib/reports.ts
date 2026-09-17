@@ -1,3 +1,4 @@
+import { chargeGamingPaise, chargeSnacksPaise } from './snacks'
 import { formatDurationShort, openHoursInRange, secondsBetween } from './time'
 import type { AppData, DatePreset } from './types'
 import { rangeForPreset } from './time'
@@ -17,6 +18,8 @@ export function reportSummary(data: AppData, preset: DatePreset, customFrom?: st
     .map((session) => data.charges.find((row) => row.sessionId === session.id))
     .filter((row): row is NonNullable<typeof row> => Boolean(row))
 
+  const gamingRevenue = charges.reduce((sum, row) => sum + chargeGamingPaise(row), 0)
+  const snacksRevenue = charges.reduce((sum, row) => sum + chargeSnacksPaise(row), 0)
   const revenue = charges.reduce((sum, row) => sum + row.finalAmountPaise, 0)
   const gamingSeconds = charges.reduce((sum, row) => sum + row.rawDurationSeconds, 0)
   const occupied = occupiedAssetIds(data)
@@ -33,7 +36,7 @@ export function reportSummary(data: AppData, preset: DatePreset, customFrom?: st
       revenue: 0,
       sessions: 0,
     }
-    current.revenue += charge.finalAmountPaise
+    current.revenue += chargeGamingPaise(charge)
     current.sessions += 1
     byPackage.set(charge.packageName, current)
   }
@@ -100,6 +103,8 @@ export function reportSummary(data: AppData, preset: DatePreset, customFrom?: st
   return {
     range,
     revenue,
+    gamingRevenue,
+    snacksRevenue,
     completed: sessions.length,
     gamingSeconds,
     active: data.sessions.filter((session) => session.status === 'active').length,

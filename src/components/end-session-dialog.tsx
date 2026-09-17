@@ -1,8 +1,11 @@
 import { useMemo, useState } from 'react'
+import { DownloadInvoiceButton } from './download-invoice-button'
 import { Dialog, DialogContent } from './ui/dialog'
 import { Button } from './ui/button'
 import { FieldLabel, Input } from './ui/input'
+import { invoiceFromSession } from '@/lib/invoice'
 import { formatMoney, rupeesToPaise } from '@/lib/money'
+import { sessionSnacksPaise } from '@/lib/snacks'
 import { completeSession, previewComplete, sessionDisplayName } from '@/lib/store'
 import { formatClock, formatDuration, formatDurationShort } from '@/lib/time'
 import type { AppData, GamingSession, PaymentMethod, PaymentStatus } from '@/lib/types'
@@ -31,7 +34,23 @@ export function EndSessionDialog({ open, onOpenChange, data, session }: Props) {
   if (!session || !preview) return null
 
   const overridePaise = override.trim() === '' ? null : rupeesToPaise(Number(override))
-  const finalPaise = overridePaise ?? preview.computedAmountPaise
+  const snacksPaise = sessionSnacksPaise(session)
+  const gamingPaise = overridePaise ?? preview.computedAmountPaise
+  const finalPaise = gamingPaise + snacksPaise
+  const endedAt = new Date(now).toISOString()
+  const invoice = invoiceFromSession(
+    data,
+    session,
+    {
+      ...preview,
+      overrideAmountPaise: overridePaise,
+      snacksAmountPaise: snacksPaise,
+      finalAmountPaise: finalPaise,
+      paymentStatus,
+      paymentMethod: method,
+    },
+    endedAt,
+  )
 
   function confirm() {
     if (!session) return
@@ -58,20 +77,25 @@ export function EndSessionDialog({ open, onOpenChange, data, session }: Props) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
-        title="Confirm bill"
-        className="max-w-lg"
+        title="Session Summary"
+        className="max-w-xl"
+        dense
         footer={
-          <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
-            <Button variant="ghost" onClick={() => onOpenChange(false)}>
-              Keep running
-            </Button>
-            <Button variant="electric" onClick={confirm}>
-              Confirm & release
-            </Button>
+          <div className="flex items-center gap-2">
+            <DownloadInvoiceButton model={invoice} size="sm" label="Invoice" className="shrink-0" />
+            <div className="ml-auto flex min-w-0 items-center gap-2">
+              <Button size="sm" variant="ghost" onClick={() => onOpenChange(false)}>
+                <span className="sm:hidden">Keep</span>
+                <span className="hidden sm:inline">Keep running</span>
+              </Button>
+              <Button size="sm" variant="electric" onClick={confirm}>
+                Confirm
+              </Button>
+            </div>
           </div>
         }
       >
-        <div className="rounded-2xl border border-line/70 bg-[#0c1d30]/65 px-4 py-2 text-sm">
+        <div className="grid grid-cols-2 gap-x-4 rounded-xl border border-line/70 bg-[#0c1d30]/65 px-3 py-1 text-sm">
           <Row label="Customer" value={sessionDisplayName(session, data)} />
           <Row label="Package" value={session.packageNameSnapshot} />
           <Row
@@ -79,18 +103,17 @@ export function EndSessionDialog({ open, onOpenChange, data, session }: Props) {
             value={`${formatClock(session.startedAt)} → ${formatClock(new Date(now).toISOString())}`}
           />
           <Row label="Played" value={formatDuration(preview.rawDurationSeconds)} />
-          <Row
-            label="Billed"
-            value={`${formatDurationShort(preview.billedDurationSeconds)} · min 1h, +30 min`}
-          />
+          <Row label="Billed" value={formatDurationShort(preview.billedDurationSeconds)} />
           <Row label="Rate" value={`${formatMoney(preview.hourlyRatePaise)} / hr`} />
-          <Row label="Computed" value={formatMoney(preview.computedAmountPaise)} />
+          <Row label="Gaming" value={formatMoney(gamingPaise)} />
+          <Row label="Snacks" value={formatMoney(snacksPaise)} />
         </div>
 
-        <div className="mt-5 grid gap-3 sm:grid-cols-2">
+        <div className="mt-3 grid grid-cols-2 gap-2">
           <div>
-            <FieldLabel>Override amount (₹)</FieldLabel>
+            <FieldLabel>Override ₹</FieldLabel>
             <Input
+              className="h-9"
               inputMode="decimal"
               placeholder="Leave empty"
               value={override}
@@ -98,8 +121,9 @@ export function EndSessionDialog({ open, onOpenChange, data, session }: Props) {
             />
           </div>
           <div>
-            <FieldLabel>Override reason</FieldLabel>
+            <FieldLabel>Reason</FieldLabel>
             <Input
+              className="h-9"
               placeholder="Comp / adjust"
               value={reason}
               onChange={(event) => setReason(event.target.value)}
@@ -110,7 +134,7 @@ export function EndSessionDialog({ open, onOpenChange, data, session }: Props) {
             <select
               value={paymentStatus}
               onChange={(event) => setPaymentStatus(event.target.value as PaymentStatus)}
-              className="h-11 w-full rounded-xl border border-line bg-[#0b1b2d] px-3"
+              className="h-9 w-full rounded-xl border border-line bg-[#0b1b2d] px-3 text-sm"
             >
               <option value="collected">Collected</option>
               <option value="pending">Pending</option>
@@ -121,7 +145,7 @@ export function EndSessionDialog({ open, onOpenChange, data, session }: Props) {
             <select
               value={method}
               onChange={(event) => setMethod(event.target.value as PaymentMethod)}
-              className="h-11 w-full rounded-xl border border-line bg-[#0b1b2d] px-3"
+              className="h-9 w-full rounded-xl border border-line bg-[#0b1b2d] px-3 text-sm"
             >
               <option value="upi">UPI</option>
               <option value="cash">Cash</option>
@@ -131,11 +155,16 @@ export function EndSessionDialog({ open, onOpenChange, data, session }: Props) {
           </div>
         </div>
 
-        <div className="mt-5 rounded-2xl border border-electric/35 bg-[linear-gradient(120deg,rgba(35,136,237,0.18),rgba(35,136,237,0.04))] p-4">
-          <div className="text-xs tracking-[0.16em] text-muted uppercase">Final amount</div>
-          <div className="text-3xl font-extrabold text-white">{formatMoney(finalPaise)}</div>
+        <div className="mt-3 flex items-center justify-between gap-3 rounded-xl border border-electric/35 bg-[linear-gradient(120deg,rgba(35,136,237,0.18),rgba(35,136,237,0.04))] px-3 py-2">
+          <div>
+            <div className="text-[10px] tracking-[0.16em] text-muted uppercase">Collectable</div>
+            <div className="text-[11px] text-muted">
+              Gaming {formatMoney(gamingPaise)} + Snacks {formatMoney(snacksPaise)}
+            </div>
+          </div>
+          <div className="text-2xl font-extrabold text-white">{formatMoney(finalPaise)}</div>
         </div>
-        {error ? <p className="mt-3 text-sm text-crimson">{error}</p> : null}
+        {error ? <p className="mt-2 text-sm text-crimson">{error}</p> : null}
       </DialogContent>
     </Dialog>
   )
@@ -143,9 +172,9 @@ export function EndSessionDialog({ open, onOpenChange, data, session }: Props) {
 
 function Row({ label, value }: { label: string; value: string }) {
   return (
-    <div className="flex items-center justify-between gap-4 border-b border-line/70 py-2 last:border-b-0">
-      <span className="shrink-0 text-muted">{label}</span>
-      <span className="text-right font-semibold">{value}</span>
+    <div className="flex min-w-0 items-center justify-between gap-2 border-b border-line/70 py-1.5 [&:nth-last-child(-n+2)]:border-b-0">
+      <span className="shrink-0 text-xs text-muted">{label}</span>
+      <span className="truncate text-right text-sm font-semibold">{value}</span>
     </div>
   )
 }

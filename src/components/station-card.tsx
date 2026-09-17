@@ -2,6 +2,7 @@ import { LiveTimer } from './timer'
 import { StatusPill } from './status-pill'
 import { Button } from './ui/button'
 import { formatMoney } from '@/lib/money'
+import { sessionSnacksPaise } from '@/lib/snacks'
 import { amountForDuration, billedSeconds } from '@/lib/billing'
 import { assetsForSession, extendSession, sessionDisplayName } from '@/lib/store'
 import { formatDuration, secondsBetween } from '@/lib/time'
@@ -23,12 +24,14 @@ export function StationCard({
   session,
   onStart,
   onEnd,
+  onAddSnacks,
 }: {
   data: AppData
   asset: Asset
   session: GamingSession | null
   onStart: () => void
   onEnd: () => void
+  onAddSnacks?: () => void
 }) {
   const now = useNow()
   const type = data.assetTypes.find((row) => row.id === asset.assetTypeId)
@@ -49,6 +52,8 @@ export function StationCard({
     )
     estimate = amountForDuration(session.hourlyRatePaise, billed)
   }
+  const snacks = sessionSnacksPaise(session)
+  const total = estimate + snacks
 
   const status =
     asset.operationalStatus === 'maintenance'
@@ -103,14 +108,9 @@ export function StationCard({
               {asset.name}
             </span>
             {session ? (
-              <>
-                <span className="live-pip mt-1 size-2.5 shrink-0 rounded-full bg-crimson shadow-[0_0_0_3px_rgba(6,15,28,0.7)] sm:hidden" />
-                <span className="hidden sm:inline-flex">
-                  <StatusPill status="in-use">In use</StatusPill>
-                </span>
-              </>
+              <StatusPill status="in-use">In use</StatusPill>
             ) : (
-              <StatusPill status={status}>{asset.operationalStatus}</StatusPill>
+              <StatusPill status={status}>{status === 'available' ? 'Available' : asset.operationalStatus}</StatusPill>
             )}
           </div>
         </div>
@@ -123,7 +123,7 @@ export function StationCard({
                 className={cn('text-xl leading-none font-bold sm:text-2xl', warningTimerClass[warning])}
               />
               <span className="text-base leading-none font-extrabold text-white sm:text-lg">
-                {formatMoney(estimate)}
+                {formatMoney(total)}
               </span>
             </>
           ) : (
@@ -153,18 +153,39 @@ export function StationCard({
                 {extras.map((row) => row.assetNameSnapshot).join(' · ')}
               </div>
             ) : null}
-            <div className="mt-auto flex gap-1.5">
-              <Button
-                size="sm"
-                variant={warning === 'none' ? 'outline' : 'gold'}
-                className="flex-1 px-1 text-xs"
-                onClick={() => extendSession(session.id)}
-              >
-                +{data.settings.warningExtendMinutes}m
-              </Button>
-              <Button size="sm" variant="crimson" className="flex-1 px-1 text-xs" onClick={onEnd}>
-                End
-              </Button>
+            <div className="space-y-0.5 text-[11px] leading-tight">
+              <div className="flex justify-between gap-2 text-muted">
+                <span>Gaming</span>
+                <span className="font-semibold text-white">{formatMoney(estimate)}</span>
+              </div>
+              <div className="flex justify-between gap-2 text-muted">
+                <span>Snacks</span>
+                <span className="font-semibold text-white">{formatMoney(snacks)}</span>
+              </div>
+              <div className="flex justify-between gap-2 font-extrabold text-white">
+                <span>Total</span>
+                <span>{formatMoney(total)}</span>
+              </div>
+            </div>
+            <div className="mt-auto space-y-1.5">
+              {onAddSnacks ? (
+                <Button size="sm" variant="outline" className="w-full px-1 text-xs" onClick={onAddSnacks}>
+                  + Add Snacks
+                </Button>
+              ) : null}
+              <div className="flex gap-1.5">
+                <Button
+                  size="sm"
+                  variant={warning === 'none' ? 'outline' : 'gold'}
+                  className="flex-1 px-1 text-xs"
+                  onClick={() => extendSession(session.id)}
+                >
+                  +{data.settings.warningExtendMinutes}m
+                </Button>
+                <Button size="sm" variant="crimson" className="flex-1 px-1 text-xs" onClick={onEnd}>
+                  End
+                </Button>
+              </div>
             </div>
           </>
         ) : status === 'available' ? (

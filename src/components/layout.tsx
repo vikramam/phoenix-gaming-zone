@@ -2,7 +2,6 @@ import { useState } from 'react'
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import {
   BarChart3,
-  Bell,
   Building2,
   ChevronDown,
   Clock3,
@@ -16,12 +15,10 @@ import {
   Users,
 } from 'lucide-react'
 import { BrandMark } from './brand-mark'
-import { StatusPill } from './status-pill'
 import { canAccessReports, canAccessSetup, roleLabel } from '@/lib/access'
 import { useAppData, useAuthUser } from '@/lib/use-store'
 import { signOut } from '@/lib/store'
 import { cn } from '@/lib/utils'
-import { supabaseConfigured } from '@/lib/supabase'
 
 const nav = [
   { to: '/', label: 'Floor', icon: LayoutGrid, end: true },
@@ -74,7 +71,10 @@ export function AppLayout() {
       <div className="pointer-events-none fixed inset-0 blue-grid opacity-60" />
 
       <aside className="fixed inset-y-0 left-0 z-50 hidden w-[220px] flex-col border-r border-line/70 bg-[#0b1b2d]/96 px-3 py-5 backdrop-blur-xl lg:flex print:hidden">
-        <BrandMark compact className="mb-7 px-1" />
+        <div className="relative mb-5 flex justify-center">
+          <div className="pointer-events-none absolute inset-[-8px] bg-[radial-gradient(circle_at_center,rgba(35,136,237,0.16),transparent_68%)]" />
+          <BrandMark compact className="justify-center" markClassName="relative h-auto w-[7rem] mix-blend-screen" />
+        </div>
         <p className="mb-2 px-3 text-[10px] font-bold tracking-[0.18em] text-muted uppercase">Navigation</p>
         <nav className="space-y-1">
           {visibleNav.map((item) => (
@@ -159,33 +159,14 @@ export function AppLayout() {
       </aside>
 
       <div className="relative lg:pl-[220px] print:pl-0">
-        <header className="sticky top-0 z-40 border-b border-line/60 bg-bg/80 backdrop-blur-xl print:hidden">
-          <div className="flex h-[60px] items-center gap-3 px-3 md:h-[72px] md:px-6">
-            <BrandMark compact className="lg:hidden" />
+        <header className="sticky top-0 z-40 border-b border-line/60 bg-bg/80 backdrop-blur-xl print:hidden lg:hidden">
+          <div className="flex h-[60px] items-center gap-3 px-3">
+            <BrandMark compact />
             <div className="relative ml-auto flex items-center gap-2">
-              <StatusPill status="live">Live</StatusPill>
-              <button
-                type="button"
-                onClick={() => navigate('/active')}
-                className="relative rounded-xl border border-line/60 bg-[#0b1b2d] p-2 text-muted hover:text-white md:p-2.5"
-                aria-label="Active sessions"
-              >
-                <Bell className="size-4" />
-                {activeCount ? <span className="absolute top-1.5 right-1.5 size-1.5 rounded-full bg-gold" /> : null}
-              </button>
-              <div className="hidden items-center gap-2 rounded-xl border border-line/60 bg-[#0b1b2d] px-2.5 py-1.5 lg:flex">
-                <span className="flex size-7 items-center justify-center rounded-lg bg-electric text-xs font-bold">
-                  {(user?.name || 'O').slice(0, 1).toUpperCase()}
-                </span>
-                <div>
-                  <div className="text-xs font-bold capitalize">{user?.name}</div>
-                  <div className="text-[9px] text-muted">{roleLabel(user)}</div>
-                </div>
-              </div>
               <button
                 type="button"
                 onClick={() => setAccountOpen((open) => !open)}
-                className="flex items-center gap-2 rounded-xl border border-line/60 bg-[#0b1b2d] px-2 py-1.5 lg:hidden"
+                className="flex items-center gap-2 rounded-xl border border-line/60 bg-[#0b1b2d] px-2 py-1.5"
                 aria-expanded={accountOpen}
                 aria-label="Account menu"
               >
@@ -202,11 +183,11 @@ export function AppLayout() {
                 <>
                   <button
                     type="button"
-                    className="fixed inset-0 z-40 lg:hidden"
+                    className="fixed inset-0 z-40"
                     aria-label="Close account menu"
                     onClick={() => setAccountOpen(false)}
                   />
-                  <div className="absolute top-[calc(100%+0.5rem)] right-0 z-50 w-52 rounded-2xl border border-line/70 bg-[#0b1b2d] p-3 shadow-[0_16px_40px_rgba(0,0,0,0.35)] lg:hidden">
+                  <div className="absolute top-[calc(100%+0.5rem)] right-0 z-50 w-52 rounded-2xl border border-line/70 bg-[#0b1b2d] p-3 shadow-[0_16px_40px_rgba(0,0,0,0.35)]">
                     <div className="mb-2">
                       <div className="truncate text-sm font-bold capitalize">{user?.name}</div>
                       <div className="text-[11px] text-muted">{roleLabel(user)}</div>
@@ -245,12 +226,6 @@ export function AppLayout() {
             ))}
           </div>
         ) : null}
-
-        <div className="hidden border-b border-electric/20 bg-electric/8 px-3 py-2 text-center text-[11px] text-electric-soft print:hidden md:block md:px-6 md:text-xs">
-          {supabaseConfigured
-            ? 'Operator login and the shop floor sync through Supabase.'
-            : 'Local mode — sessions persist in this browser. Add Supabase keys later to sync across devices.'}
-        </div>
 
         <main className="mx-auto max-w-[1500px] px-3 py-4 pb-[calc(5.5rem+env(safe-area-inset-bottom))] md:px-6 md:py-7 md:pb-8">
           <Outlet />

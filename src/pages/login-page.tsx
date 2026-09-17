@@ -58,9 +58,10 @@ export function LoginPage() {
       />
       <div className="pointer-events-none absolute inset-0 bg-[#050910]/55 lg:bg-transparent lg:bg-gradient-to-r lg:from-[#050910]/70 lg:via-[#050910]/28 lg:to-transparent" />
 
-      <div className="relative w-full max-w-[26rem] rounded-[28px] border border-white/16 bg-[#0b1728]/48 p-6 shadow-[0_30px_80px_rgba(0,6,16,0.45)] backdrop-blur-2xl md:p-8">
-        <div className="mb-5 flex justify-center">
-          <BrandMark markClassName="!h-16 md:!h-[4.75rem]" />
+      <div className="relative isolate w-full max-w-[26rem] rounded-[28px] border border-white/16 bg-[#0b1b2d]/90 p-6 shadow-[0_30px_80px_rgba(0,6,16,0.45)] backdrop-blur-2xl md:p-8">
+        <div className="relative mb-5 flex justify-center">
+          <div className="pointer-events-none absolute inset-[-8px] bg-[radial-gradient(circle_at_center,rgba(35,136,237,0.16),transparent_68%)]" />
+          <BrandMark className="justify-center" markClassName="relative h-auto w-[7rem] mix-blend-screen" />
         </div>
         <div className="mb-6 text-center">
           <p className="text-[11px] font-semibold tracking-[0.2em] text-electric-soft uppercase">

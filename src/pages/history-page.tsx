@@ -1,6 +1,9 @@
 import { useMemo, useState } from 'react'
 import { ArrowLeft, User } from 'lucide-react'
+import { DownloadInvoiceButton } from '@/components/download-invoice-button'
+import { invoiceFromSession } from '@/lib/invoice'
 import { formatMoney } from '@/lib/money'
+import { chargeGamingPaise, chargeSnacksPaise } from '@/lib/snacks'
 import { completedInRange } from '@/lib/reports'
 import { assetsForSession, sessionDisplayName } from '@/lib/store'
 import { formatClock, formatDate, formatDurationShort, rangeForPreset } from '@/lib/time'
@@ -189,6 +192,8 @@ function HistoryDetail({
   const lifetimePaise = customerSessions.reduce((sum, row) => {
     return sum + (data.charges.find((chargeRow) => chargeRow.sessionId === row.id)?.finalAmountPaise ?? 0)
   }, 0)
+  const invoice =
+    charge && session.endedAt ? invoiceFromSession(data, session, charge, session.endedAt) : null
 
   return (
     <article className="esports-card overflow-hidden rounded-2xl">
@@ -212,6 +217,9 @@ function HistoryDetail({
               {charge ? formatMoney(charge.finalAmountPaise) : '—'}
             </div>
             <div className="text-[11px] text-muted">{paymentLabel(charge)}</div>
+            <div className="mt-3 sm:flex sm:justify-end">
+              <DownloadInvoiceButton model={invoice} size="sm" />
+            </div>
           </div>
         </div>
       </div>
@@ -233,6 +241,14 @@ function HistoryDetail({
             value={`${formatMoney(charge.hourlyRatePaise)} / hr`}
             sub={`Computed ${formatMoney(charge.computedAmountPaise)}`}
           />
+        </div>
+      ) : null}
+
+      {charge ? (
+        <div className="grid gap-px bg-line/60 sm:grid-cols-3">
+          <DetailTile label="Gaming" value={formatMoney(chargeGamingPaise(charge))} sub="Session charges" />
+          <DetailTile label="Snacks" value={formatMoney(chargeSnacksPaise(charge))} sub="Food and drinks" />
+          <DetailTile label="Collectable" value={formatMoney(charge.finalAmountPaise)} sub="Gaming + snacks" />
         </div>
       ) : null}
 

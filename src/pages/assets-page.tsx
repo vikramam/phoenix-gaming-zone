@@ -1,11 +1,13 @@
 import { useState } from 'react'
 import { ConfirmDialog } from '@/components/confirm-dialog'
+import { StatusPill } from '@/components/status-pill'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent } from '@/components/ui/dialog'
 import { FieldLabel, Input } from '@/components/ui/input'
 import { occupiedAssetIds, saveAsset, saveAssetType, setAssetDeleted } from '@/lib/store'
-import type { Asset, OperationalStatus } from '@/lib/types'
+import type { Asset, AssetType, OperationalStatus } from '@/lib/types'
 import { useAppData } from '@/lib/use-store'
+import { cn } from '@/lib/utils'
 
 export function AssetsPage() {
   const data = useAppData()
@@ -24,6 +26,7 @@ export function AssetsPage() {
 
   const deletedCount = data.assets.filter((asset) => asset.isDeleted).length
   const visibleAssets = data.assets.filter((asset) => asset.isDeleted === showDeleted)
+  const types = [...data.assetTypes].sort((a, b) => a.sortOrder - b.sortOrder)
 
   function updateStatus(assetId: string, operationalStatus: OperationalStatus) {
     const asset = data.assets.find((row) => row.id === assetId)
@@ -51,6 +54,30 @@ export function AssetsPage() {
         still names it. Restore deleted units any time.
       </p>
 
+      <div className="mb-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        {types.map((type) => {
+          const units = data.assets.filter((asset) => asset.assetTypeId === type.id && !asset.isDeleted)
+          const inUse = units.filter((asset) => occupied.has(asset.id)).length
+          return (
+            <article key={type.id} className="esports-card overflow-hidden rounded-2xl">
+              <AssetMockup src={type.imagePath} alt={type.name} className="h-36 sm:h-40" />
+              <div className="flex items-start justify-between gap-2 p-3">
+                <div className="min-w-0">
+                  <div className="truncate font-extrabold">{type.name}</div>
+                  <div className="text-[11px] text-muted">
+                    {units.length} {units.length === 1 ? 'unit' : 'units'}
+                    {inUse ? ` · ${inUse} in use` : ''}
+                  </div>
+                </div>
+                <StatusPill status={type.isStation ? 'live' : 'available'}>
+                  {type.isStation ? 'Station' : 'Accessory'}
+                </StatusPill>
+              </div>
+            </article>
+          )
+        })}
+      </div>
+
       <div className="grid gap-4 lg:grid-cols-2">
         <section className="esports-card rounded-2xl p-4">
           <h2 className="mb-3 font-extrabold">New asset type</h2>
@@ -74,14 +101,6 @@ export function AssetsPage() {
           >
             Add type
           </Button>
-          <div className="mt-4 space-y-2">
-            {data.assetTypes.map((type) => (
-              <div key={type.id} className="flex items-center justify-between rounded-lg bg-white/5 px-3 py-2 text-sm">
-                <span>{type.name}</span>
-                <span className="text-muted">{type.isStation ? 'Station' : 'Accessory'}</span>
-              </div>
-            ))}
-          </div>
         </section>
 
         <section className="esports-card rounded-2xl p-4">
@@ -160,118 +179,39 @@ export function AssetsPage() {
             : 'No assets yet. Add a type and a unit above.'}
         </div>
       ) : (
-        <>
-          <div className="mt-4 space-y-2.5 md:hidden">
-            {visibleAssets.map((asset) => {
-              const type = data.assetTypes.find((row) => row.id === asset.assetTypeId)
-              const busy = occupied.has(asset.id)
-              return (
-                <div key={asset.id} className="esports-card rounded-2xl p-3">
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="min-w-0">
-                      <div className="truncate font-bold">{asset.name}</div>
-                      <div className="text-xs text-muted">
-                        {asset.code} · {type?.name}
-                      </div>
+        <div className="mt-4 space-y-6">
+          {types.map((type) => {
+            const units = visibleAssets.filter((asset) => asset.assetTypeId === type.id)
+            if (units.length === 0) return null
+            return (
+              <section key={type.id} className="space-y-3">
+                <div className="flex items-center gap-3">
+                  <AssetMockup src={type.imagePath} alt="" className="size-11 rounded-xl" />
+                  <div>
+                    <div className="section-title">{type.name}</div>
+                    <div className="text-[11px] text-muted">
+                      {units.length} {showDeleted ? 'deleted' : 'on the floor'}
                     </div>
-                    <span className="shrink-0 rounded-full border border-line px-2 py-0.5 text-[10px] font-bold tracking-wider text-muted uppercase">
-                      {asset.isDeleted ? 'Deleted' : busy ? 'In use' : asset.operationalStatus}
-                    </span>
-                  </div>
-                  {!asset.isDeleted ? (
-                    <select
-                      value={asset.operationalStatus}
-                      onChange={(event) => updateStatus(asset.id, event.target.value as OperationalStatus)}
-                      className="mt-3 h-10 w-full rounded-lg border border-line bg-bg px-2 text-sm"
-                    >
-                      <option value="available">Available</option>
-                      <option value="maintenance">Maintenance</option>
-                      <option value="disabled">Disabled</option>
-                      <option value="retired">Retired</option>
-                    </select>
-                  ) : null}
-                  <div className="mt-3 flex flex-wrap gap-2">
-                    {!asset.isDeleted ? (
-                      <>
-                        <Button size="sm" variant="outline" onClick={() => setEditing(asset)}>
-                          Edit
-                        </Button>
-                        <Button size="sm" variant="crimson" onClick={() => setPendingDelete(asset)}>
-                          Delete
-                        </Button>
-                      </>
-                    ) : (
-                      <Button size="sm" variant="electric" onClick={() => setPendingRestore(asset)}>
-                        Restore
-                      </Button>
-                    )}
                   </div>
                 </div>
-              )
-            })}
-          </div>
-
-          <div className="esports-card scroll-slim mt-4 hidden overflow-x-auto rounded-2xl md:block">
-            <table className="w-full min-w-[720px] text-left text-sm">
-              <thead className="bg-white/5 text-xs tracking-[0.14em] text-muted uppercase">
-                <tr>
-                  <th className="px-4 py-3">Asset</th>
-                  <th className="px-4 py-3">Type</th>
-                  <th className="px-4 py-3">Status</th>
-                  <th className="px-4 py-3">Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {visibleAssets.map((asset) => {
-                  const type = data.assetTypes.find((row) => row.id === asset.assetTypeId)
-                  const busy = occupied.has(asset.id)
-                  return (
-                    <tr key={asset.id} className="border-t border-line">
-                      <td className="px-4 py-3">
-                        <div className="font-bold">{asset.name}</div>
-                        <div className="text-xs text-muted">{asset.code}</div>
-                      </td>
-                      <td className="px-4 py-3">{type?.name}</td>
-                      <td className="px-4 py-3">
-                        {asset.isDeleted ? 'Deleted' : busy ? 'In use' : asset.operationalStatus}
-                      </td>
-                      <td className="px-4 py-3">
-                        <div className="flex flex-wrap items-center gap-2">
-                          {!asset.isDeleted ? (
-                            <>
-                              <select
-                                value={asset.operationalStatus}
-                                onChange={(event) =>
-                                  updateStatus(asset.id, event.target.value as OperationalStatus)
-                                }
-                                className="h-9 rounded-lg border border-line bg-bg px-2"
-                              >
-                                <option value="available">Available</option>
-                                <option value="maintenance">Maintenance</option>
-                                <option value="disabled">Disabled</option>
-                                <option value="retired">Retired</option>
-                              </select>
-                              <Button size="sm" variant="outline" onClick={() => setEditing(asset)}>
-                                Edit
-                              </Button>
-                              <Button size="sm" variant="crimson" onClick={() => setPendingDelete(asset)}>
-                                Delete
-                              </Button>
-                            </>
-                          ) : (
-                            <Button size="sm" variant="electric" onClick={() => setPendingRestore(asset)}>
-                              Restore
-                            </Button>
-                          )}
-                        </div>
-                      </td>
-                    </tr>
-                  )
-                })}
-              </tbody>
-            </table>
-          </div>
-        </>
+                <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
+                  {units.map((asset) => (
+                    <AssetUnitCard
+                      key={asset.id}
+                      asset={asset}
+                      type={type}
+                      busy={occupied.has(asset.id)}
+                      onStatus={(next) => updateStatus(asset.id, next)}
+                      onEdit={() => setEditing(asset)}
+                      onDelete={() => setPendingDelete(asset)}
+                      onRestore={() => setPendingRestore(asset)}
+                    />
+                  ))}
+                </div>
+              </section>
+            )
+          })}
+        </div>
       )}
 
       {editing ? (
@@ -325,6 +265,107 @@ export function AssetsPage() {
         }}
       />
     </div>
+  )
+}
+
+function AssetMockup({
+  src,
+  alt,
+  className,
+}: {
+  src: string | null | undefined
+  alt: string
+  className?: string
+}) {
+  return (
+    <div className={cn('product-well relative overflow-hidden', className)}>
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_50%_18%,rgba(35,136,237,0.14),transparent_52%)]" />
+      {src ? (
+        <img
+          src={src}
+          alt={alt}
+          width={640}
+          height={640}
+          loading="lazy"
+          decoding="async"
+          className="relative h-full w-full object-contain p-2"
+        />
+      ) : (
+        <div className="relative flex h-full items-center justify-center px-3 text-center text-[10px] font-bold tracking-[0.16em] text-[#7a8ea3] uppercase">
+          No mockup
+        </div>
+      )}
+    </div>
+  )
+}
+
+function AssetUnitCard({
+  asset,
+  type,
+  busy,
+  onStatus,
+  onEdit,
+  onDelete,
+  onRestore,
+}: {
+  asset: Asset
+  type: AssetType
+  busy: boolean
+  onStatus: (status: OperationalStatus) => void
+  onEdit: () => void
+  onDelete: () => void
+  onRestore: () => void
+}) {
+  const pillStatus = asset.isDeleted ? 'disabled' : busy ? 'in-use' : asset.operationalStatus
+
+  return (
+    <article className="esports-card flex h-full flex-col overflow-hidden rounded-2xl">
+      <div className="relative">
+        <AssetMockup src={type.imagePath} alt={asset.name} className="h-36 sm:h-40" />
+        <div className="absolute inset-x-0 bottom-0 h-16 bg-[linear-gradient(180deg,transparent,rgba(6,15,28,0.78))]" />
+        <div className="absolute inset-x-0 top-0 flex items-start justify-between gap-2 p-2">
+          <span className="max-w-[70%] truncate rounded-lg bg-[#060f1c]/85 px-1.5 py-0.5 text-xs font-extrabold text-white backdrop-blur-sm">
+            {asset.name}
+          </span>
+          <StatusPill status={pillStatus}>
+            {asset.isDeleted ? 'Deleted' : busy ? 'In use' : asset.operationalStatus}
+          </StatusPill>
+        </div>
+        <div className="absolute inset-x-0 bottom-0 px-2.5 pb-1.5 text-[11px] font-semibold tracking-wider text-white/80 uppercase">
+          {asset.code}
+        </div>
+      </div>
+      <div className="flex flex-1 flex-col gap-2 p-2.5">
+        {!asset.isDeleted ? (
+          <select
+            value={asset.operationalStatus}
+            onChange={(event) => onStatus(event.target.value as OperationalStatus)}
+            className="h-10 w-full rounded-lg border border-line bg-bg px-2 text-sm"
+          >
+            <option value="available">Available</option>
+            <option value="maintenance">Maintenance</option>
+            <option value="disabled">Disabled</option>
+            <option value="retired">Retired</option>
+          </select>
+        ) : null}
+        <div className="mt-auto flex flex-wrap gap-1.5">
+          {!asset.isDeleted ? (
+            <>
+              <Button size="sm" variant="outline" className="flex-1" onClick={onEdit}>
+                Edit
+              </Button>
+              <Button size="sm" variant="crimson" className="flex-1" onClick={onDelete}>
+                Delete
+              </Button>
+            </>
+          ) : (
+            <Button size="sm" variant="electric" className="w-full" onClick={onRestore}>
+              Restore
+            </Button>
+          )}
+        </div>
+      </div>
+    </article>
   )
 }
 
