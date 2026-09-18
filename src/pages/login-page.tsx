@@ -45,7 +45,7 @@ export function LoginPage() {
   }
 
   return (
-    <div className="relative flex min-h-svh items-center justify-center overflow-hidden bg-[#050910] px-4 py-8 sm:px-8 lg:justify-start lg:px-16 xl:px-24">
+    <div className="relative flex min-h-dvh items-center justify-center overflow-hidden bg-[#050910] px-4 py-8 pt-[max(2rem,env(safe-area-inset-top,0px))] sm:px-8 lg:justify-start lg:px-16 xl:px-24">
       <img
         src="/images/hero/login.webp"
         alt=""

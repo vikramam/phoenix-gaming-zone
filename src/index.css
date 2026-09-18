@@ -27,8 +27,7 @@ body,
   html,
   body,
   #root {
-    height: var(--app-height, 100dvh);
-    max-height: var(--app-height, 100dvh);
+    height: 100dvh;
     overflow: hidden;
   }
 }
