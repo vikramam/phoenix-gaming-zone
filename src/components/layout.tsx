@@ -49,6 +49,25 @@ export function AppLayout() {
   const mainRef = useRef<HTMLElement>(null)
 
   useLayoutEffect(() => {
+    const setAppHeight = () => {
+      const height = window.visualViewport?.height ?? window.innerHeight
+      document.documentElement.style.setProperty('--app-height', `${Math.round(height)}px`)
+    }
+    setAppHeight()
+    const viewport = window.visualViewport
+    viewport?.addEventListener('resize', setAppHeight)
+    viewport?.addEventListener('scroll', setAppHeight)
+    window.addEventListener('resize', setAppHeight)
+    window.addEventListener('orientationchange', setAppHeight)
+    return () => {
+      viewport?.removeEventListener('resize', setAppHeight)
+      viewport?.removeEventListener('scroll', setAppHeight)
+      window.removeEventListener('resize', setAppHeight)
+      window.removeEventListener('orientationchange', setAppHeight)
+    }
+  }, [])
+
+  useLayoutEffect(() => {
     mainRef.current?.scrollTo({ top: 0, left: 0 })
     window.scrollTo({ top: 0, left: 0 })
   }, [location.pathname])
@@ -75,7 +94,7 @@ export function AppLayout() {
       ]
 
   return (
-    <div className="flex h-full flex-col overflow-hidden bg-bg text-white lg:block lg:h-auto lg:min-h-svh lg:overflow-visible">
+    <div className="flex h-[var(--app-height,100dvh)] flex-col overflow-hidden bg-bg text-white lg:block lg:h-auto lg:min-h-svh lg:overflow-visible">
       <div className="pointer-events-none fixed inset-0 blue-grid opacity-60" />
 
       <aside className="fixed inset-y-0 left-0 z-50 hidden w-[220px] flex-col border-r border-line/70 bg-[#0b1b2d]/96 px-3 py-5 backdrop-blur-xl lg:flex print:hidden">
@@ -240,14 +259,14 @@ export function AppLayout() {
 
         <main
           ref={mainRef}
-          className="mx-auto min-h-0 w-full max-w-[1500px] flex-1 overflow-y-auto px-3 py-4 lg:overflow-visible md:px-6 md:py-7 md:pb-8"
+          className="mx-auto min-h-0 w-full max-w-[1500px] flex-1 overflow-y-auto px-3 py-4 pb-20 lg:overflow-visible md:px-6 md:py-7 lg:pb-8"
         >
           <PageTransition />
         </main>
 
         <nav
           className={cn(
-            'z-50 mt-auto grid shrink-0 border-t border-line bg-bg/95 px-1 pt-0.5 pb-[max(0.25rem,env(safe-area-inset-bottom))] backdrop-blur-xl print:hidden lg:hidden',
+            'fixed inset-x-0 bottom-0 z-50 grid border-t border-line bg-bg px-1 pt-0.5 pb-1.5 print:hidden lg:hidden',
             mobileNav.length === 6 ? 'grid-cols-6' : mobileNav.length === 5 ? 'grid-cols-5' : 'grid-cols-4',
           )}
         >
