@@ -47,6 +47,35 @@ export function AppLayout() {
   const showReports = canAccessReports(user)
   const showSetup = canAccessSetup(user)
   const mainRef = useRef<HTMLElement>(null)
+  const tabBarRef = useRef<HTMLElement>(null)
+
+  useLayoutEffect(() => {
+    const nav = tabBarRef.current
+    if (!nav) return
+
+    const placeTabBar = () => {
+      if (window.matchMedia('(min-width: 1024px)').matches) {
+        nav.style.top = ''
+        nav.style.bottom = ''
+        return
+      }
+      const viewport = window.visualViewport
+      const viewportBottom = viewport ? viewport.offsetTop + viewport.height : window.innerHeight
+      nav.style.bottom = 'auto'
+      nav.style.top = `${Math.round(viewportBottom - nav.offsetHeight)}px`
+    }
+
+    placeTabBar()
+    const viewport = window.visualViewport
+    viewport?.addEventListener('resize', placeTabBar)
+    viewport?.addEventListener('scroll', placeTabBar)
+    window.addEventListener('resize', placeTabBar)
+    return () => {
+      viewport?.removeEventListener('resize', placeTabBar)
+      viewport?.removeEventListener('scroll', placeTabBar)
+      window.removeEventListener('resize', placeTabBar)
+    }
+  }, [])
 
   useLayoutEffect(() => {
     mainRef.current?.scrollTo({ top: 0, left: 0 })
@@ -240,14 +269,15 @@ export function AppLayout() {
 
         <main
           ref={mainRef}
-          className="mx-auto min-h-0 w-full max-w-[1500px] flex-1 overflow-y-auto px-3 py-4 lg:overflow-visible md:px-6 md:py-7 md:pb-8"
+          className="mx-auto min-h-0 w-full max-w-[1500px] flex-1 overflow-y-auto px-3 py-4 pb-16 lg:overflow-visible md:px-6 md:py-7 lg:pb-8"
         >
           <PageTransition />
         </main>
 
         <nav
+          ref={tabBarRef}
           className={cn(
-            'z-50 mt-auto grid shrink-0 border-t border-line bg-bg px-1 pt-0.5 pb-1.5 print:hidden lg:hidden',
+            'fixed inset-x-0 bottom-0 z-50 grid border-t border-line bg-bg px-1 pt-0.5 pb-1 print:hidden lg:hidden',
             mobileNav.length === 6 ? 'grid-cols-6' : mobileNav.length === 5 ? 'grid-cols-5' : 'grid-cols-4',
           )}
         >
