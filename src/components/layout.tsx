@@ -75,7 +75,7 @@ export function AppLayout() {
       ]
 
   return (
-    <div className="flex h-svh flex-col overflow-hidden bg-bg text-white lg:block lg:h-auto lg:min-h-svh lg:overflow-visible">
+    <div className="flex h-full flex-col overflow-hidden bg-bg text-white lg:block lg:h-auto lg:min-h-svh lg:overflow-visible">
       <div className="pointer-events-none fixed inset-0 blue-grid opacity-60" />
 
       <aside className="fixed inset-y-0 left-0 z-50 hidden w-[220px] flex-col border-r border-line/70 bg-[#0b1b2d]/96 px-3 py-5 backdrop-blur-xl lg:flex print:hidden">
@@ -247,7 +247,7 @@ export function AppLayout() {
 
         <nav
           className={cn(
-            'z-50 grid shrink-0 border-t border-line bg-bg/95 px-1 pt-1 pb-[calc(0.35rem+env(safe-area-inset-bottom))] backdrop-blur-xl print:hidden lg:hidden',
+            'z-50 mt-auto grid shrink-0 border-t border-line bg-bg/95 px-1 pt-0.5 pb-[max(0.25rem,env(safe-area-inset-bottom))] backdrop-blur-xl print:hidden lg:hidden',
             mobileNav.length === 6 ? 'grid-cols-6' : mobileNav.length === 5 ? 'grid-cols-5' : 'grid-cols-4',
           )}
         >
@@ -259,7 +259,7 @@ export function AppLayout() {
               viewTransition
               className={({ isActive }) =>
                 cn(
-                  'flex min-w-0 flex-col items-center gap-1 rounded-lg px-0.5 py-2 text-[9px] font-semibold uppercase tracking-wider text-muted sm:text-[10px]',
+                  'flex min-w-0 flex-col items-center gap-0.5 rounded-lg px-0.5 py-1.5 text-[9px] font-semibold uppercase tracking-wider text-muted sm:text-[10px]',
                   (isActive || (item.to.startsWith('/setup') && onSetup)) && 'text-electric-soft',
                 )
               }

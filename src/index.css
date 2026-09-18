@@ -23,6 +23,18 @@ body,
   min-height: 100%;
 }
 
+@media (max-width: 1023px) {
+  html,
+  body,
+  #root {
+    height: 100svh;
+    height: 100dvh;
+    max-height: 100svh;
+    max-height: 100dvh;
+    overflow: hidden;
+  }
+}
+
 body {
   margin: 0;
   background: #091525;
