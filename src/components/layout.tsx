@@ -1,5 +1,6 @@
 import { useState } from 'react'
-import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
+import { NavLink, useLocation, useNavigate } from 'react-router-dom'
+import { PageTransition } from './page-transition'
 import {
   BarChart3,
   Building2,
@@ -82,6 +83,7 @@ export function AppLayout() {
               key={item.to}
               to={item.to}
               end={item.end}
+              viewTransition
               className={({ isActive }) =>
                 cn(
                   'flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold text-muted transition hover:bg-white/5 hover:text-white',
@@ -105,7 +107,7 @@ export function AppLayout() {
                 onClick={() => {
                   const next = !setupOpen
                   setSetupOpen(next)
-                  if (next && !onSetup) navigate('/setup/assets')
+                  if (next && !onSetup) navigate('/setup/assets', { viewTransition: true })
                 }}
                 className={cn(
                   'flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold transition hover:bg-white/5 hover:text-white',
@@ -122,6 +124,7 @@ export function AppLayout() {
                     <NavLink
                       key={item.to}
                       to={item.to}
+                      viewTransition
                       className={({ isActive }) =>
                         cn(
                           'flex items-center gap-2.5 rounded-xl px-3 py-2 text-sm font-semibold text-muted transition hover:bg-white/5 hover:text-white',
@@ -187,7 +190,7 @@ export function AppLayout() {
                     aria-label="Close account menu"
                     onClick={() => setAccountOpen(false)}
                   />
-                  <div className="absolute top-[calc(100%+0.5rem)] right-0 z-50 w-52 rounded-2xl border border-line/70 bg-[#0b1b2d] p-3 shadow-[0_16px_40px_rgba(0,0,0,0.35)]">
+                  <div className="menu-enter absolute top-[calc(100%+0.5rem)] right-0 z-50 w-52 rounded-2xl border border-line/70 bg-[#0b1b2d] p-3 shadow-[0_16px_40px_rgba(0,0,0,0.35)]">
                     <div className="mb-2">
                       <div className="truncate text-sm font-bold capitalize">{user?.name}</div>
                       <div className="text-[11px] text-muted">{roleLabel(user)}</div>
@@ -212,6 +215,7 @@ export function AppLayout() {
               <NavLink
                 key={item.to}
                 to={item.to}
+                viewTransition
                 className={({ isActive }) =>
                   cn(
                     'shrink-0 rounded-xl border px-3 py-1.5 text-sm font-semibold',
@@ -228,7 +232,7 @@ export function AppLayout() {
         ) : null}
 
         <main className="mx-auto max-w-[1500px] px-3 py-4 pb-[calc(5.5rem+env(safe-area-inset-bottom))] md:px-6 md:py-7 md:pb-8">
-          <Outlet />
+          <PageTransition />
         </main>
 
         <nav
@@ -242,6 +246,7 @@ export function AppLayout() {
               key={item.to}
               to={item.to}
               end={item.end}
+              viewTransition
               className={({ isActive }) =>
                 cn(
                   'flex flex-col items-center gap-1 rounded-lg py-2 text-[10px] font-semibold uppercase tracking-wider text-muted',

@@ -34,10 +34,10 @@ export function DialogContent({
 }) {
   return (
     <DialogPrimitive.Portal>
-      <DialogPrimitive.Overlay className="fixed inset-0 z-50 bg-[#020914]/80 backdrop-blur-md" />
+      <DialogPrimitive.Overlay className="dialog-overlay fixed inset-0 z-50 bg-[#020914]/80 backdrop-blur-md" />
       <DialogPrimitive.Content
         className={cn(
-          'fixed top-1/2 left-1/2 z-50 flex max-h-[calc(100dvh-1.5rem)] w-[min(920px,calc(100vw-1rem))] -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden rounded-2xl border border-[#31516f] bg-[#11243a]/98 shadow-[0_32px_100px_rgba(0,8,20,0.65),0_0_0_1px_rgba(89,182,255,0.06)] sm:rounded-3xl',
+          'dialog-panel fixed top-1/2 left-1/2 z-50 flex max-h-[calc(100dvh-1.5rem)] w-[min(920px,calc(100vw-1rem))] flex-col overflow-hidden rounded-2xl border border-[#31516f] bg-[#11243a]/98 shadow-[0_32px_100px_rgba(0,8,20,0.65),0_0_0_1px_rgba(89,182,255,0.06)] sm:rounded-3xl',
           className,
         )}
       >

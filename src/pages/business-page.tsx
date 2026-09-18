@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { Dialog, DialogContent } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { FieldLabel, Input } from '@/components/ui/input'
 import { paiseToRupees, rupeesToPaise } from '@/lib/money'
@@ -7,10 +8,15 @@ import { resetDemoData, updateSettings } from '@/lib/store'
 import type { RoundingMode } from '@/lib/types'
 import { useAppData } from '@/lib/use-store'
 
+const RESET_DEMO_PASSWORD = 'admin'
+
 export function BusinessPage() {
   const data = useAppData()
   const [settings, setSettings] = useState(data.settings)
   const [saved, setSaved] = useState(false)
+  const [resetOpen, setResetOpen] = useState(false)
+  const [resetPassword, setResetPassword] = useState('')
+  const [resetError, setResetError] = useState('')
 
   useEffect(() => {
     setSettings(data.settings)
@@ -21,6 +27,17 @@ export function BusinessPage() {
     setSettings(next)
     setSaved(true)
     window.setTimeout(() => setSaved(false), 2000)
+  }
+
+  function confirmReset() {
+    if (resetPassword !== RESET_DEMO_PASSWORD) {
+      setResetError('Wrong password.')
+      return
+    }
+    resetDemoData()
+    setResetOpen(false)
+    setResetPassword('')
+    setResetError('')
   }
 
   return (
@@ -267,14 +284,62 @@ export function BusinessPage() {
         <Button
           variant="outline"
           onClick={() => {
-            if (window.confirm('Reset this browser to the starter inventory and prices?')) {
-              resetDemoData()
-            }
+            setResetPassword('')
+            setResetError('')
+            setResetOpen(true)
           }}
         >
           Reset demo data
         </Button>
       </div>
+
+      <Dialog
+        open={resetOpen}
+        onOpenChange={(open) => {
+          setResetOpen(open)
+          if (!open) {
+            setResetPassword('')
+            setResetError('')
+          }
+        }}
+      >
+        <DialogContent
+          title="Reset demo data"
+          className="max-w-md"
+          dense
+          footer={
+            <div className="flex justify-end gap-2">
+              <Button variant="ghost" size="sm" onClick={() => setResetOpen(false)}>
+                Cancel
+              </Button>
+              <Button variant="crimson" size="sm" onClick={confirmReset}>
+                Delete
+              </Button>
+            </div>
+          }
+        >
+          <p className="mb-3 text-sm text-muted">
+            This clears sessions, customers, and starter inventory. Pricing packages and snack prices stay as they are.
+          </p>
+          <FieldLabel>Password</FieldLabel>
+          <Input
+            type="password"
+            autoComplete="off"
+            value={resetPassword}
+            placeholder="Enter password"
+            onChange={(event) => {
+              setResetPassword(event.target.value)
+              setResetError('')
+            }}
+            onKeyDown={(event) => {
+              if (event.key !== 'Enter') return
+              event.preventDefault()
+              confirmReset()
+            }}
+          />
+          {resetError ? <p className="mt-2 text-sm text-crimson">{resetError}</p> : null}
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

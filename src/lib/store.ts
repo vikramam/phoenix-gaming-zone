@@ -906,7 +906,16 @@ export function setAssetDeleted(assetId: string, isDeleted: boolean) {
 
 export function resetDemoData() {
   requireAdmin('reset shop data')
+  const packages = clone(data.packages)
+  const snackCokePaise = data.settings.snackCokePaise
+  const snackChipsPaise = data.settings.snackChipsPaise
   data = createSeedData()
+  data.packages = packages
+  data.settings = {
+    ...data.settings,
+    snackCokePaise,
+    snackChipsPaise,
+  }
   emit()
 }
 

@@ -105,7 +105,7 @@ export function FloorPage() {
       {liveSessions.length > 0 ? (
         <button
           type="button"
-          onClick={() => navigate('/active')}
+          onClick={() => navigate('/active', { viewTransition: true })}
           className="flex w-full items-center justify-between gap-3 rounded-2xl border border-crimson/35 bg-crimson/10 px-3 py-3 text-left md:hidden"
         >
           <div>
