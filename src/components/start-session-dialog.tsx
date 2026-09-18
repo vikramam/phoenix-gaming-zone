@@ -127,7 +127,8 @@ export function StartSessionDialog({ open, onOpenChange, data, presetAssetId }: 
     >
       <DialogContent
         title="Start session"
-        className="max-w-4xl"
+        dense
+        className="w-[min(40rem,calc(100vw-1rem))]"
         footer={
           <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
             <Button variant="ghost" onClick={() => onOpenChange(false)}>
@@ -139,13 +140,6 @@ export function StartSessionDialog({ open, onOpenChange, data, presetAssetId }: 
           </div>
         }
       >
-        <div className="mb-5 flex items-center gap-2 text-[10px] font-bold tracking-[0.15em] text-electric-soft uppercase">
-          <span className="flex size-5 items-center justify-center rounded-full bg-electric text-white">1</span>
-          Who's playing
-        </div>
-        <p className="mb-3 text-sm text-muted">
-          Search an existing customer, type a new name to create one, or leave empty for a walk-in.
-        </p>
         <FieldLabel>Customer</FieldLabel>
         <CustomerPicker
           name={name}
@@ -159,11 +153,8 @@ export function StartSessionDialog({ open, onOpenChange, data, presetAssetId }: 
           onChange={setName}
         />
 
-        <div className="mt-6 mb-3 flex items-center gap-2">
-          <span className="flex size-5 items-center justify-center rounded-full bg-electric text-[10px] font-bold text-white">2</span>
-          <h3 className="text-sm font-extrabold tracking-[0.16em] uppercase text-[#eaf6ff]">Choose setup</h3>
-        </div>
-        <div className="grid grid-cols-2 gap-2.5 sm:gap-3 lg:grid-cols-3">
+        <p className="mt-4 mb-2 text-[11px] font-bold tracking-[0.16em] text-muted uppercase">Setup</p>
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
           {availablePackages.map(({ pkg, picks }) => {
             const disabled = !picks
             const active = packageId === pkg.id
@@ -174,45 +165,41 @@ export function StartSessionDialog({ open, onOpenChange, data, presetAssetId }: 
                 disabled={disabled}
                 onClick={() => selectPackage(pkg.id)}
                 className={cn(
-                  'overflow-hidden rounded-2xl border bg-[#0d2034] text-left transition duration-200 hover:-translate-y-0.5',
-                  active ? 'border-electric shadow-[0_0_0_1px_#2388ed,0_10px_28px_rgba(35,136,237,0.2)]' : 'border-line hover:border-electric/45',
+                  'grid gap-1 overflow-hidden rounded-xl border bg-[#0d2034] p-1.5 text-left',
+                  active ? 'border-electric shadow-[0_0_0_1px_#2388ed]' : 'border-line hover:border-electric/45',
                   disabled && 'opacity-40',
                 )}
               >
-                <div className="product-well flex h-24 items-center justify-center sm:h-32">
+                <span className="product-well flex h-[72px] items-center justify-center overflow-hidden rounded-lg sm:h-[88px]">
                   {pkg.imagePath ? (
                     <img
                       src={pkg.imagePath}
-                      alt={pkg.name}
-                      width={320}
-                      height={320}
+                      alt=""
+                      width={160}
+                      height={160}
                       loading="lazy"
                       decoding="async"
-                      className="h-full w-full object-contain p-2"
+                      className="h-full w-full object-contain p-1.5"
                     />
                   ) : (
                     <span className="text-black/40">{pkg.name}</span>
                   )}
-                </div>
-                <div className="p-2.5 sm:p-3">
-                  <div className="text-sm font-bold sm:text-base">{pkg.name}</div>
-                  <div className="text-base font-extrabold text-white sm:text-lg">
-                    {formatMoney(pkg.hourlyRatePaise)}
-                    <span className="text-xs font-semibold text-muted"> / hr</span>
-                  </div>
-                  {disabled ? <div className="mt-1 text-xs text-crimson">Not enough free gear</div> : null}
-                </div>
+                </span>
+                <span className="line-clamp-2 text-xs font-extrabold leading-tight">{pkg.name}</span>
+                {disabled ? (
+                  <span className="text-[11px] font-semibold text-crimson">No free gear</span>
+                ) : (
+                  <span className="text-[11px] font-semibold text-muted">
+                    {formatMoney(pkg.hourlyRatePaise)} / hr
+                  </span>
+                )}
               </button>
             )
           })}
         </div>
 
         {selected ? (
-          <div className="mt-6 space-y-3 rounded-2xl border border-line/70 bg-[#0c1d30]/65 p-4">
-            <div className="flex items-center gap-2 text-[10px] font-bold tracking-[0.15em] text-electric-soft uppercase">
-              <span className="flex size-5 items-center justify-center rounded-full bg-electric text-white">3</span>
-              Assign gear
-            </div>
+          <div className="mt-4 space-y-2.5">
             {selected.items.map((item) => {
               const type = data.assetTypes.find((row) => row.id === item.assetTypeId)
               const options = allocatableOfType(item.assetTypeId, occupied, data)
@@ -221,10 +208,10 @@ export function StartSessionDialog({ open, onOpenChange, data, presetAssetId }: 
               )
               return (
                 <div key={item.assetTypeId}>
-                  <FieldLabel>
-                    {type?.name ?? 'Asset'} · pick {item.quantity}
-                  </FieldLabel>
-                  <div className="flex flex-wrap gap-2">
+                  <p className="mb-2 text-[11px] font-bold tracking-[0.16em] text-muted uppercase">
+                    Gear · {type?.name ?? 'Asset'} · pick {item.quantity}
+                  </p>
+                  <div className="flex flex-wrap gap-1.5">
                     {options.map((asset) => {
                       const on = selectedOfType.includes(asset.id)
                       return (
@@ -233,8 +220,10 @@ export function StartSessionDialog({ open, onOpenChange, data, presetAssetId }: 
                           type="button"
                           onClick={() => toggleAsset(item.assetTypeId, asset.id, item.quantity)}
                           className={cn(
-                            'rounded-lg border px-3 py-2 text-sm',
-                            on ? 'border-electric bg-electric text-white shadow-[0_5px_18px_rgba(35,136,237,0.22)]' : 'border-line bg-[#0b1b2d] text-muted',
+                            'rounded-full border px-3 py-1.5 text-xs font-bold',
+                            on
+                              ? 'border-electric bg-electric text-white'
+                              : 'border-line bg-[#0b1b2d] text-muted',
                           )}
                         >
                           {asset.name}
@@ -248,7 +237,7 @@ export function StartSessionDialog({ open, onOpenChange, data, presetAssetId }: 
           </div>
         ) : null}
 
-        {error ? <p className="mt-4 text-sm text-crimson">{error}</p> : null}
+        {error ? <p className="mt-3 text-sm text-crimson">{error}</p> : null}
       </DialogContent>
     </Dialog>
   )
@@ -286,7 +275,7 @@ function CustomerPicker({
           value={name}
           autoComplete="off"
           placeholder={hasSavedCustomers ? 'Search or type a new name' : 'Name — or leave empty for walk-in'}
-          className="pr-10 pl-10"
+          className="h-10 pr-10 pl-10"
           onChange={(event) => {
             onChange(event.target.value)
             onOpenChange(true)

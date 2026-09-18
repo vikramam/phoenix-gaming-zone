@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useLayoutEffect, useRef, useState } from 'react'
 import { NavLink, useLocation, useNavigate } from 'react-router-dom'
 import { PageTransition } from './page-transition'
 import {
@@ -46,6 +46,12 @@ export function AppLayout() {
   const [accountOpen, setAccountOpen] = useState(false)
   const showReports = canAccessReports(user)
   const showSetup = canAccessSetup(user)
+  const mainRef = useRef<HTMLElement>(null)
+
+  useLayoutEffect(() => {
+    mainRef.current?.scrollTo({ top: 0, left: 0 })
+    window.scrollTo({ top: 0, left: 0 })
+  }, [location.pathname])
 
   function handleSignOut() {
     setAccountOpen(false)
@@ -57,6 +63,7 @@ export function AppLayout() {
         { to: '/', label: 'Floor', icon: Gamepad2, end: true },
         { to: '/active', label: 'Active', icon: Clock3 },
         { to: '/history', label: 'History', icon: History },
+        { to: '/customers', label: 'Customers', icon: Users },
         { to: '/reports', label: 'Reports', icon: BarChart3 },
         { to: '/setup/assets', label: 'More', icon: Settings2 },
       ]
@@ -68,7 +75,7 @@ export function AppLayout() {
       ]
 
   return (
-    <div className="min-h-svh bg-bg text-white">
+    <div className="flex h-svh flex-col overflow-hidden bg-bg text-white lg:block lg:h-auto lg:min-h-svh lg:overflow-visible">
       <div className="pointer-events-none fixed inset-0 blue-grid opacity-60" />
 
       <aside className="fixed inset-y-0 left-0 z-50 hidden w-[220px] flex-col border-r border-line/70 bg-[#0b1b2d]/96 px-3 py-5 backdrop-blur-xl lg:flex print:hidden">
@@ -161,8 +168,8 @@ export function AppLayout() {
         </div>
       </aside>
 
-      <div className="relative lg:pl-[220px] print:pl-0">
-        <header className="sticky top-0 z-40 border-b border-line/60 bg-bg/80 backdrop-blur-xl print:hidden lg:hidden">
+      <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden lg:block lg:overflow-visible lg:pl-[220px] print:pl-0">
+        <header className="sticky top-0 z-40 shrink-0 border-b border-line/60 bg-bg/80 backdrop-blur-xl print:hidden lg:hidden">
           <div className="flex h-[60px] items-center gap-3 px-3">
             <BrandMark compact />
             <div className="relative ml-auto flex items-center gap-2">
@@ -231,14 +238,17 @@ export function AppLayout() {
           </div>
         ) : null}
 
-        <main className="mx-auto max-w-[1500px] px-3 py-4 pb-[calc(5.5rem+env(safe-area-inset-bottom))] md:px-6 md:py-7 md:pb-8">
+        <main
+          ref={mainRef}
+          className="mx-auto min-h-0 w-full max-w-[1500px] flex-1 overflow-y-auto px-3 py-4 lg:overflow-visible md:px-6 md:py-7 md:pb-8"
+        >
           <PageTransition />
         </main>
 
         <nav
           className={cn(
-            'fixed inset-x-0 bottom-0 z-40 grid border-t border-line bg-bg/95 px-1 pt-1 pb-[calc(0.25rem+env(safe-area-inset-bottom))] backdrop-blur-xl print:hidden lg:hidden',
-            mobileNav.length === 5 ? 'grid-cols-5' : 'grid-cols-4',
+            'z-50 grid shrink-0 border-t border-line bg-bg/95 px-1 pt-1 pb-[calc(0.35rem+env(safe-area-inset-bottom))] backdrop-blur-xl print:hidden lg:hidden',
+            mobileNav.length === 6 ? 'grid-cols-6' : mobileNav.length === 5 ? 'grid-cols-5' : 'grid-cols-4',
           )}
         >
           {mobileNav.map((item) => (
@@ -249,7 +259,7 @@ export function AppLayout() {
               viewTransition
               className={({ isActive }) =>
                 cn(
-                  'flex flex-col items-center gap-1 rounded-lg py-2 text-[10px] font-semibold uppercase tracking-wider text-muted',
+                  'flex min-w-0 flex-col items-center gap-1 rounded-lg px-0.5 py-2 text-[9px] font-semibold uppercase tracking-wider text-muted sm:text-[10px]',
                   (isActive || (item.to.startsWith('/setup') && onSetup)) && 'text-electric-soft',
                 )
               }
@@ -262,7 +272,7 @@ export function AppLayout() {
                   </span>
                 ) : null}
               </span>
-              {item.label}
+              <span className="w-full truncate text-center">{item.label}</span>
             </NavLink>
           ))}
         </nav>

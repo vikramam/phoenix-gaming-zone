@@ -93,11 +93,23 @@ export function FloorPage() {
               Your live floor at a glance. Start, extend, and settle every session without slowing down.
             </p>
           </div>
-          <div className="grid grid-cols-2 gap-1 rounded-2xl border border-white/8 bg-[#091727]/60 p-2 backdrop-blur-md sm:gap-2 sm:p-3 lg:grid-cols-4">
-            <HeroStat label="Revenue today" value={formatMoney(today.revenue)} />
-            <HeroStat label="Live sessions" value={String(today.active)} accent />
-            <HeroStat label="Assets free" value={String(today.available)} />
-            <HeroStat label="In use" value={String(today.inUse)} />
+          <div className="rounded-2xl border border-white/8 bg-[#091727]/60 p-2 backdrop-blur-md sm:p-3">
+            <div className="grid grid-cols-2 gap-1 sm:gap-2 lg:grid-cols-4">
+              <HeroStat label="Revenue today" value={formatMoney(today.revenue)} />
+              <HeroStat label="Live sessions" value={String(today.active)} accent />
+              <HeroStat label="Assets free" value={String(today.available)} />
+              <HeroStat label="In use" value={String(today.inUse)} />
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                setPresetAssetId(null)
+                setStartOpen(true)
+              }}
+              className="mt-2 inline-flex h-10 w-full items-center justify-center gap-2 rounded-xl bg-gold px-4 text-sm font-bold text-[#142033] shadow-[0_8px_22px_rgba(255,209,65,0.18)] transition hover:-translate-y-0.5 sm:h-11"
+            >
+              <Plus className="size-4" /> New session
+            </button>
           </div>
         </div>
       </section>
@@ -115,23 +127,6 @@ export function FloorPage() {
           <span className="text-xs font-bold text-electric-soft">Active</span>
         </button>
       ) : null}
-
-      <div className="flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <p className="text-[10px] font-bold tracking-[0.2em] text-electric-soft uppercase">Live operations</p>
-          <h2 className="page-title mt-1">PS5 Stations</h2>
-        </div>
-        <button
-          type="button"
-          onClick={() => {
-            setPresetAssetId(null)
-            setStartOpen(true)
-          }}
-          className="inline-flex h-11 flex-1 items-center justify-center gap-2 rounded-xl bg-gold px-4 text-sm font-bold whitespace-nowrap text-[#142033] shadow-[0_8px_22px_rgba(255,209,65,0.18)] transition hover:-translate-y-0.5 sm:flex-none"
-        >
-          <Plus className="size-4" /> New session
-        </button>
-      </div>
 
       {stationTypes.map((type) => {
         const stations = data.assets.filter(
