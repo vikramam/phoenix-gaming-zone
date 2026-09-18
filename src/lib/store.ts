@@ -17,6 +17,7 @@ import type {
   PaymentMethod,
   PaymentStatus,
   PricingPackage,
+  SessionAsset,
   SessionCharge,
 } from './types'
 import { createId, slugify } from './utils'
@@ -258,6 +259,91 @@ function applyRemoteShop(snapshot: AppData, updatedAt: string) {
   applyingRemote = false
 }
 
+function pickSession(local?: GamingSession, remote?: GamingSession) {
+  if (!local) return remote
+  if (!remote) return local
+  if (local.status === 'completed' && remote.status !== 'completed') return local
+  if (remote.status === 'completed' && local.status !== 'completed') return remote
+  if ((local.snacksAmountPaise ?? 0) !== (remote.snacksAmountPaise ?? 0)) {
+    return (local.snacksAmountPaise ?? 0) > (remote.snacksAmountPaise ?? 0) ? local : remote
+  }
+  if ((local.extensionCount ?? 0) !== (remote.extensionCount ?? 0)) {
+    return (local.extensionCount ?? 0) > (remote.extensionCount ?? 0) ? local : remote
+  }
+  return remote
+}
+
+function mergeShopData(remote: AppData, local: AppData, remoteUpdatedAt: string): AppData {
+  const remoteSessions = new Map(remote.sessions.map((session) => [session.id, session]))
+  const localSessions = new Map(local.sessions.map((session) => [session.id, session]))
+  const sessions: GamingSession[] = []
+
+  for (const remoteSession of remote.sessions) {
+    sessions.push(pickSession(localSessions.get(remoteSession.id), remoteSession) ?? remoteSession)
+  }
+  for (const localSession of local.sessions) {
+    if (remoteSessions.has(localSession.id)) continue
+    if (localSession.startedAt > remoteUpdatedAt) sessions.push(localSession)
+  }
+
+  const keepIds = new Set(sessions.map((session) => session.id))
+  const remoteCharges = new Map(remote.charges.map((charge) => [charge.sessionId, charge]))
+  const localCharges = new Map(local.charges.map((charge) => [charge.sessionId, charge]))
+  const charges: SessionCharge[] = []
+  for (const session of sessions) {
+    const localCharge = localCharges.get(session.id)
+    const remoteCharge = remoteCharges.get(session.id)
+    const charge = session.status === 'completed' ? localCharge ?? remoteCharge : remoteCharge ?? localCharge
+    if (charge) charges.push(charge)
+  }
+
+  const allocations = new Map<string, SessionAsset>()
+  for (const row of [...remote.sessionAssets, ...local.sessionAssets]) {
+    if (!keepIds.has(row.sessionId)) continue
+    const prev = allocations.get(row.id)
+    if (!prev) {
+      allocations.set(row.id, row)
+      continue
+    }
+    allocations.set(row.id, prev.releasedAt ? prev : row.releasedAt ? row : prev)
+  }
+  const sessionById = new Map(sessions.map((session) => [session.id, session]))
+  const sessionAssets = [...allocations.values()].map((row) => {
+    const session = sessionById.get(row.sessionId)
+    if (session?.status === 'completed' && !row.releasedAt) {
+      return { ...row, releasedAt: session.endedAt }
+    }
+    return row
+  })
+
+  const customers = new Map(remote.customers.map((customer) => [customer.id, customer]))
+  for (const customer of local.customers) {
+    if (!customers.has(customer.id)) customers.set(customer.id, customer)
+  }
+
+  return hydrateCatalog({
+    ...remote,
+    sessions,
+    charges,
+    sessionAssets,
+    customers: [...customers.values()],
+  })
+}
+
+function shopOpsKey(snapshot: AppData) {
+  return JSON.stringify({
+    sessions: snapshot.sessions.map((session) => [
+      session.id,
+      session.status,
+      session.endedAt,
+      session.snacksAmountPaise,
+      session.extensionCount,
+    ]),
+    charges: snapshot.charges.map((charge) => [charge.sessionId, charge.finalAmountPaise, charge.paymentStatus]),
+    assets: snapshot.sessionAssets.map((row) => [row.id, row.releasedAt]),
+  })
+}
+
 async function pushShopState() {
   if (!supabase || !auth || applyingRemote) return
   const { data: sessionData } = await supabase.auth.getSession()
@@ -282,6 +368,17 @@ function scheduleShopPush() {
   }, 250)
 }
 
+function flushShopPush() {
+  if (typeof window !== 'undefined') window.clearTimeout(remoteWriteTimer)
+  void pushShopState()
+}
+
+function adoptShopState(remote: AppData, updatedAt: string) {
+  const merged = mergeShopData(remote, data, updatedAt)
+  applyRemoteShop(merged, updatedAt)
+  if (shopOpsKey(merged) !== shopOpsKey(remote)) flushShopPush()
+}
+
 async function pullShopState() {
   if (!supabase || !auth) return
   const { data: row, error } = await supabase
@@ -293,14 +390,7 @@ async function pullShopState() {
     await pushShopState()
     return
   }
-  const remote = hydrateCatalog(row.data)
-  const remoteActive = remote.sessions.filter((session) => session.status === 'active').length
-  const localActive = data.sessions.filter((session) => session.status === 'active').length
-  if (remoteActive === 0 && localActive > 0) {
-    await pushShopState()
-    return
-  }
-  applyRemoteShop(remote, row.updated_at as string)
+  adoptShopState(hydrateCatalog(clone(row.data)), row.updated_at as string)
 }
 
 function subscribeShopState() {
@@ -313,7 +403,7 @@ function subscribeShopState() {
       (payload) => {
         const next = payload.new as { data?: unknown; updated_at?: string } | null
         if (!next?.updated_at || next.updated_at === lastRemoteUpdatedAt || !isAppData(next.data)) return
-        applyRemoteShop(hydrateCatalog(next.data), next.updated_at)
+        adoptShopState(hydrateCatalog(clone(next.data)), next.updated_at)
       },
     )
     .subscribe()
@@ -331,6 +421,12 @@ async function syncShopAfterAuth() {
 }
 
 if (typeof window !== 'undefined') {
+  window.addEventListener('pagehide', () => {
+    flushShopPush()
+  })
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'hidden') flushShopPush()
+  })
   window.addEventListener('storage', (event) => {
     if (event.key === STORAGE_KEY && event.newValue) {
       try {
@@ -384,11 +480,12 @@ async function hydrateSupabaseAuth() {
 
 void hydrateSupabaseAuth()
 
-function emit() {
+function emit(options?: { flush?: boolean }) {
   // Consumers read this snapshot through useSyncExternalStore, which bails out
   // on reference equality, so every change has to produce a fresh object.
   notify()
-  scheduleShopPush()
+  if (options?.flush) flushShopPush()
+  else scheduleShopPush()
 }
 
 export function subscribe(listener: Listener) {
@@ -638,7 +735,7 @@ export function startSession(input: StartSessionInput): GamingSession {
     })),
     ...data.sessionAssets,
   ]
-  emit()
+  emit({ flush: true })
   return session
 }
 
@@ -694,7 +791,7 @@ export function completeSession(input: CompleteSessionInput): SessionCharge {
     row.sessionId === session.id && !row.releasedAt ? { ...row, releasedAt: endedAt } : row,
   )
   data.charges = [charge, ...data.charges.filter((row) => row.sessionId !== session.id)]
-  emit()
+  emit({ flush: true })
   return charge
 }
 
@@ -712,7 +809,7 @@ export function addSessionSnacks(sessionId: string, amountPaise: number) {
       ? { ...row, snacksAmountPaise: (row.snacksAmountPaise ?? 0) + add }
       : row,
   )
-  emit()
+  emit({ flush: true })
 }
 
 export function extendSession(sessionId: string) {
@@ -722,7 +819,7 @@ export function extendSession(sessionId: string) {
   }
   const extended = { ...session, extensionCount: (session.extensionCount ?? 0) + 1 }
   data.sessions = data.sessions.map((row) => (row.id === session.id ? extended : row))
-  emit()
+  emit({ flush: true })
   return extended
 }
 
@@ -916,7 +1013,7 @@ export function resetDemoData() {
     snackCokePaise,
     snackChipsPaise,
   }
-  emit()
+  emit({ flush: true })
 }
 
 export function snapshot() {
